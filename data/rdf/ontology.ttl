@@ -1,0 +1,65 @@
+@prefix : <http://ns.inria.fr/kg/works/> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix datacite: <http://purl.org/spar/datacite/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+
+:Resource a rdfs:Class ;
+    rdfs:label "Resource"@en ;
+    rdfs:comment "A resource"@en ;
+    rdfs:subClassOf prov:Entity .
+
+:PublicationIdentifier a rdfs:Class ;
+    rdfs:label "Publication Identifier"@en ;
+    rdfs:comment "An identifier for a publication"@en ;
+    rdfs:subClassOf datacite:ResourceIdentifier .
+
+:HALArticle a rdfs:Class ;
+    rdfs:label "HAL Article"@en ;
+    rdfs:comment "An article in HAL"@en ;
+    rdfs:subClassOf :PublicationIdentifier .
+
+:ARXIV a rdfs:Class ;
+    rdfs:label "ArXiv"@en ;
+    rdfs:comment "An ArXiv identifier"@en ;
+    rdfs:subClassOf :PublicationIdentifier .
+
+:DOI a rdfs:Class ;
+    rdfs:label "DOI"@en ;
+    rdfs:comment "A DOI identifier"@en ;
+    rdfs:subClassOf :PublicationIdentifier .
+
+:ZenodoIdentifier a rdfs:Class ;
+    rdfs:label "Zenodo Resource Identifier"@en ;
+    rdfs:comment "An identifier for a Zenodo resource"@en ;
+    rdfs:subClassOf datacite:ResourceIdentifier .
+
+:RepositoryIdentifier a rdfs:Class ;
+    rdfs:label "Git Resource Identifier"@en ;
+    rdfs:comment "An identifier for a GitHub, GitLab, Bitbucket, etc. resource, generally the URL of the repo"@en ;
+    rdfs:subClassOf datacite:ResourceIdentifier .
+
+:ORCID a rdfs:Class ;
+    rdfs:label "ORCID"@en ;
+    rdfs:comment "An ORCID identifier"@en ;
+    rdfs:subClassOf datacite:PersonalIdentifier .
+
+:HALPerson a rdfs:Class ;
+    rdfs:label "HAL Person"@en ;
+    rdfs:comment "A person in HAL"@en ;
+    rdfs:subClassOf foaf:PersonalIdentifier .
+
+:GitHubUser a rdfs:Class ;
+    rdfs:label "GitHub User"@en ;
+    rdfs:comment "A GitHub user"@en ;
+    rdfs:subClassOf foaf:PersonalIdentifier .
+
+:HALOrganization a rdfs:Class ;
+    rdfs:label "HAL Organization"@en ;
+    rdfs:comment "An organization in HAL"@en ;
+    rdfs:subClassOf datacite:OrganizationIdentifier .
+
+:GitHubOrganization a rdfs:Class ;
+    rdfs:label "GitHub Organization"@en ;
+    rdfs:comment "A GitHub organization"@en ;
+    rdfs:subClassOf datacite:OrganizationIdentifier .

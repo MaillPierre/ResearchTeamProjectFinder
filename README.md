@@ -13,6 +13,7 @@ Waiting for an API key
 
 ### HAL
 
+#### SPARQL
 SPARQL endpoint: https://data.hal.science/doc/sparql
 
 Research team list:
@@ -50,9 +51,36 @@ ORDER BY DESC(?nom)
 LIMIT 50
 ```
 
+#### API
+
+Portail INRIA: `inria`
+```shell
+curl "https://api.archives-ouvertes.fr/search/inria?q=*:*&rows=100&start=0&wt=json"
+```
+
+Referential author
+```shell
+curl "http://api.archives-ouvertes.fr/ref/author/?q=*:*&rows=100&start=0&wt=json"
+```
+
+Structure referential
+```shell
+curl "http://api.archives-ouvertes.fr/ref/structure?rows=100&start=0&wt=json"
+```
+
+Author-structure link
+```shell
+curl "http://api.archives-ouvertes.fr/search/authorstructure/?firstName_t=j*&lastName_t=*&rows=100&start=0&wt=json"
+```
+
+Referential document
+```shell
+curl "http://api.archives-ouvertes.fr/ref/document/?q=*:*&rows=100&start=0&wt=json"
+```
+
 ### Paper with code
 
-Dowlnload links: https://paperswithcode.com/about
+Download links: https://paperswithcode.com/about
 
 ### Code archive
 
@@ -94,6 +122,8 @@ graph LR;
 ```
 
 #### Schema:
+
+##### Data:
 ```mermaid
 ---
   config:
@@ -101,38 +131,6 @@ graph LR;
       hideEmptyMembersBox: true
 ---
 classDiagram
-  class Person {
-    foaf:firstName : xsd:string [1]
-    foaf:lastName : xsd:string [1]
-    foaf:fullName : xsd:string [1]
-    dct:alternative : xsd:string [1]
-  }
-  Person "1" --> "1..*" Organization : foaf member
-  Person "1" --> "0..*" PersonalIdentifier : adms identifier
-  
-  class foafOrg["foaf:Organization"]
-  foafOrg <|-- Organization
-  class Organization {
-    owl:sameAs : datacite:OrganizationIdentifier [1..*]
-    foaf:fullName : xsd:string [1]
-    dct:alternative : xsd:string [1]
-  }
-  Organization "1" --> "0..*" OrganizationIdentifier : adms identifier
-
-  class PersonalIdentifier["datacite:PersonalIdentifier"]
-  PersonalIdentifier <|-- ORCID
-  PersonalIdentifier <|-- HALPerson
-  PersonalIdentifier <|-- GitHubUser
-
-  class OrganizationIdentifier["datacite:OrganizationIdentifier"]
-  OrganizationIdentifier <|-- HALOrg
-  OrganizationIdentifier <|-- GitHubOrg
-
-  class ResourceIdentifier["datacite:ResourceIdentifier"] {
-  }
-
-  ResourceIdentifier <|-- ZenodoResource
-  ResourceIdentifier <|-- GitHubRepository
   class Resource {
     rdfs:label : xsd:string [1]
     dct:abstract : xsd:string [1]
@@ -144,32 +142,88 @@ classDiagram
     dct:relation : rdfs:Resource [0..*]
   }
 
+  class Source {
+    pav:importedFrom : xsd:string [1]
+    pav:retrievedOn : xsd:datetime [1]
+    pav:lastRefreshedOn : xsd:datetime [1]
+  }
+
+  class ResourceIdentifier["datacite:ResourceIdentifier"]
+
+  class RepositoryIdentifier
+
+  class Person["foaf:Person"] {
+    foaf:firstName : xsd:string [1]
+    foaf:lastName : xsd:string [1]
+    foaf:fullName : xsd:string [1]
+    dct:alternative : xsd:string [1]
+  }
+
+  class PersonalIdentifier["datacite:PersonalIdentifier"]
+  
+  class foafOrg["foaf:Organization"] {
+    owl:sameAs : datacite:OrganizationIdentifier [1..*]
+    foaf:fullName : xsd:string [1]
+    dct:alternative : xsd:string [1]
+  }
+
+  class OrganizationIdentifier["datacite:OrganizationIdentifier"] {
+    rdfs:label : xsdstring [1]
+  }
+
   class Code["dctype:Software"]
-  Code "1" --> "1" ResourceIdentifier : adms identifier
-  dcatDataset "1" --> "1" ResourceIdentifier : adms identifier
-  Resource <|-- Code
-  Resource <|-- dcatDataset
-  Resource "1" --> "0..*" Person : dct contributor
-  Resource "1" --> "0..*" Resource : dct isReferencedBy
-  Resource <|-- Publication
+
+  class dcatDataset["dcat:Dataset"] {
+  }
 
   class Publication["bibo:Document"] {
     dct:title : xsd:string [1]
   }
-  Publication "1" --> "1" PublicationIdentifier : adms identifier
+  class PublicationIdentifier
+
+  class Identifier["datacite:Identifier"]  {
+    rdfs:label : xsdstring [1]
+  }
+
+  class provEntity["prov:Entity"]
+
+  provEntity <|-- Resource
+  Resource <|-- Code
+  Resource <|-- dcatDataset
+  Resource "1" --> "0..*" Source : pav retrievedFrom
+  Resource "1" --> "0..*" Person : dct contributor
+  Resource "1" --> "0..*" Resource : dct isReferencedBy
+  Resource <|-- Publication
+  Person "1" --> "1..*" foafOrg : foaf member
+  Person "1" --> "0..*" PersonalIdentifier : adms identifier
+  PersonalIdentifier <|-- ORCID
+  PersonalIdentifier <|-- HALPerson
+  PersonalIdentifier <|-- GitHubUser
+  Code "1" --> "1" ResourceIdentifier : adms identifier
+  ResourceIdentifier <|-- ZenodoResource
+  ResourceIdentifier <|-- RepositoryIdentifier
   ResourceIdentifier <|-- PublicationIdentifier
+  Publication "1" --> "1" PublicationIdentifier : adms identifier
+  foafOrg "1" --> "0..*" OrganizationIdentifier : adms identifier
+  OrganizationIdentifier <|-- HALOrg
+  OrganizationIdentifier <|-- GitHubOrg
+  dcatDataset "1" --> "1" ResourceIdentifier : adms identifier
   PublicationIdentifier <|-- DOI
   PublicationIdentifier <|-- HALArticle
   PublicationIdentifier <|-- ArXiv
-
-  class dcatDataset["dcat:Dataset"] {
-  }
+  Identifier <|-- ResourceIdentifier
+  Identifier <|-- OrganizationIdentifier
+  Identifier <|-- PersonalIdentifier
+  Identifier <|-- PublicationIdentifier
   
 ```
 
 For later: 
 - Extract URLs from publications using python code
 - Use of [OpenRefine](https://openrefine.org/)
+  - Search for Github URLs in abstracts
+- Search for DOI in GitHub READMEs ?
+- Use Tesseract to find GitHub URLs in articles
 
 Note:
 - ORKG judged too poor to be used. too few Organization, schema and API inconsistent
