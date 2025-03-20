@@ -44,6 +44,16 @@
     rdfs:comment "An ORCID identifier"@en ;
     rdfs:subClassOf datacite:PersonalIdentifier .
 
+:GoogleScholar a rdfs:Class ;
+    rdfs:label "Google Scholar"@en ;
+    rdfs:comment "A Google Scholar identifier"@en ;
+    rdfs:subClassOf datacite:PersonalIdentifier .
+
+:IdRef a rdfs:Class ;
+    rdfs:label "IdRef"@en ;
+    rdfs:comment "An IdRef identifier"@en ;
+    rdfs:subClassOf datacite:PersonalIdentifier .
+
 :HALPerson a rdfs:Class ;
     rdfs:label "HAL Person"@en ;
     rdfs:comment "A person in HAL"@en ;

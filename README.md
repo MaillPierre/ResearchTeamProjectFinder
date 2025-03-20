@@ -55,27 +55,27 @@ LIMIT 50
 
 Portail INRIA: `inria`
 ```shell
-curl "https://api.archives-ouvertes.fr/search/inria?q=*:*&rows=100&start=0&wt=json"
+curl "https://api.archives-ouvertes.fr/search/inria?q=*:*&rows=100&start=0&wt=json&fl=*"
 ```
 
 Referential author
 ```shell
-curl "http://api.archives-ouvertes.fr/ref/author/?q=*:*&rows=100&start=0&wt=json"
+curl "http://api.archives-ouvertes.fr/ref/author/?q=*:*&rows=100&start=0&wt=json&fl=*"
 ```
 
 Structure referential
 ```shell
-curl "http://api.archives-ouvertes.fr/ref/structure?rows=100&start=0&wt=json"
+curl "http://api.archives-ouvertes.fr/ref/structure?rows=100&start=0&wt=json&fl=*"
 ```
 
 Author-structure link
 ```shell
-curl "http://api.archives-ouvertes.fr/search/authorstructure/?firstName_t=j*&lastName_t=*&rows=100&start=0&wt=json"
+curl "http://api.archives-ouvertes.fr/search/authorstructure/?firstName_t=*&lastName_t=*&rows=100&start=0&wt=json&fl=*"
 ```
 
 Referential document
 ```shell
-curl "http://api.archives-ouvertes.fr/ref/document/?q=*:*&rows=100&start=0&wt=json"
+curl "http://api.archives-ouvertes.fr/ref/document/?q=*:*&rows=100&start=0&wt=json&fl=*"
 ```
 
 ### Paper with code
@@ -97,6 +97,11 @@ https://github.com/ORCID/orcid-conversion-lib
 Must be done manually
 [BIL](https://bil.inria.fr/fr/catalog/listby/researcherWebPage)
 
+### IdRef
+
+Example: Author id : https://www.idref.fr/061775509
+Corresponding rdf file: https://www.idref.fr/061775509.rdf
+
 ## Knowledge Graph
 
 #### Source ogranization:
@@ -105,6 +110,8 @@ Must be done manually
 graph LR;
   ORCID --- Org.rdf
   ORCID --- Person.rdf
+  IdRef --- Person.rdf
+  GoogleScholar --- Person.rdf
   HAL --- Org.rdf
   HAL --- Person.rdf
   HAL --- Article.rdf
@@ -155,7 +162,7 @@ classDiagram
   class Person["foaf:Person"] {
     foaf:firstName : xsd:string [1]
     foaf:lastName : xsd:string [1]
-    foaf:fullName : xsd:string [1]
+    foaf:name : xsd:string [1]
     dct:alternative : xsd:string [1]
   }
 
@@ -197,6 +204,8 @@ classDiagram
   Person "1" --> "1..*" foafOrg : foaf member
   Person "1" --> "0..*" PersonalIdentifier : adms identifier
   PersonalIdentifier <|-- ORCID
+  PersonalIdentifier <|-- IdRef
+  PersonalIdentifier <|-- GoogleScholar
   PersonalIdentifier <|-- HALPerson
   PersonalIdentifier <|-- GitHubUser
   Code "1" --> "1" ResourceIdentifier : adms identifier
