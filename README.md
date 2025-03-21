@@ -169,7 +169,6 @@ classDiagram
   class PersonalIdentifier["datacite:PersonalIdentifier"]
   
   class foafOrg["foaf:Organization"] {
-    owl:sameAs : datacite:OrganizationIdentifier [1..*]
     foaf:fullName : xsd:string [1]
     dct:alternative : xsd:string [1]
   }
@@ -209,6 +208,8 @@ classDiagram
   PersonalIdentifier <|-- HALPerson
   PersonalIdentifier <|-- GitHubUser
   Code "1" --> "1" ResourceIdentifier : adms identifier
+  Code "0..*" --> "0..*" OrganizationIdentifier : dct publisher
+  Code "0..*" --> "0..*" PersonalIdentifier : dct creator
   ResourceIdentifier <|-- ZenodoResource
   ResourceIdentifier <|-- RepositoryIdentifier
   ResourceIdentifier <|-- PublicationIdentifier
