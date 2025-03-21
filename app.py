@@ -115,10 +115,14 @@ def process_hal():
                     g.add((author_uri, RDF.type, FOAF.Person))
                     g.add((author_uri, pavRetrievedFrom, author_query_literal))
                     g.add((author_uri, pavRetrievedFrom, author_api_uri))
-                    g.add((author_uri, FOAF.name, Literal(author[fullname_field])))
-                    g.add((author_uri, FOAF.firstName, Literal(author[firstname_field])))
-                    g.add((author_uri, FOAF.lastName, Literal(author[lastname_field])))
-                    g.add((author_uri, DCTERMS.alternative, Literal(author[fullname_sci_field])))
+                    if(fullname_field in author and author[fullname_field] != None):
+                        g.add((author_uri, FOAF.name, Literal(author[fullname_field])))
+                    if(firstname_field in author and author[firstname_field] != None):
+                        g.add((author_uri, FOAF.firstName, Literal(author[firstname_field])))
+                    if(lastname_field in author and author[lastname_field] != None):
+                        g.add((author_uri, FOAF.lastName, Literal(author[lastname_field])))
+                    if(fullname_sci_field in author and author[fullname_sci_field] != None):
+                        g.add((author_uri, DCTERMS.alternative, Literal(author[fullname_sci_field])))
                     if(orcid_field in author and author[orcid_field] != None):
                         for orcid in author[orcid_field]:
                             orcid_uri = create_uri(orcid_ns + orcid)
