@@ -4,3 +4,5 @@ data/hal/author/
 tmp/
 
 data/hal/software/
+
+.env

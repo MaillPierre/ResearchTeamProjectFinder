@@ -2,6 +2,24 @@
 
 The aim of this project is to create a tool able to use the different APIs available to find the public Git repositories of INRIA research teams. Further development will aim to extend this approach to all european research teams.
 
+## Plan
+
+- HAL
+  - [ ] List people and organizations
+  - [ ] List softwares declared
+  - [ ] Scan papers abstract in search for repositories URLs
+
+- CrossRef
+  - [ ] Scan papers abstract in search for repositories URLs
+
+- Papers with code
+  - [ ] List papers and their codes
+
+- Github & GitLab
+  - [ ] Retrieve Github account of known people
+  - [ ] Retrieve repositories mentioning known organizations
+  - [ ] Retrieve repositories mentioning known people
+
 ## Data
 
 ### Semantic Scholar
@@ -101,6 +119,21 @@ Must be done manually
 
 Example: Author id : https://www.idref.fr/061775509
 Corresponding rdf file: https://www.idref.fr/061775509.rdf
+
+### GitHub
+
+Search API endpoint: https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28
+
+Github python API library: https://pygithub.readthedocs.io/en/stable/github_objects.html
+
+### Gitlab
+
+[Gitlab](https://gitlab.inria.fr/)
+
+```shell
+curl --header "PRIVATE-TOKEN: <TOKEN>" "https://gitlab.inria.fr/api/v4/search?scope=projects&search=flight"
+```
+
 
 ## Knowledge Graph
 

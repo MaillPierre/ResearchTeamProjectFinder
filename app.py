@@ -5,12 +5,17 @@ from rdflib import Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
 import xml.etree.ElementTree as ET
+from github import Github
+from github import Auth
 import os
 import json
 import re
 import datetime
 import requests
 import hashlib
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Namespaces
 bibo_ns = 'http://purl.org/ontology/bibo/'
@@ -457,7 +462,17 @@ def process_paper_with_code():
     g.serialize(destination='data/rdf/paper_with_code.ttl', format='turtle')
     print('Graph written to file')
 
-
+def process_github():
+    # Connect to the Github API
+    github_token = os.getenv('github_token')
+    g = Github(github_token)
+    print(f'Connected to Github as {g.get_user().login}')
+    
+    # Sandbox query: list the repositories including INRIA
+    repos_query = g.search_repositories(query="INRIA", sort="updated", order="asc")
+    print(f'Found {repos_query.totalCount} repositories')
+    for repo in repos_query.get_page(0):
+        print(f'{repo.full_name} - {repo.description}')
 
 
 
@@ -467,10 +482,12 @@ def process_paper_with_code():
 # Load all RDF files in data/rdf and display data
 
 
-process_paper_with_code()
-print('Paper with code processed')
-process_hal()
-print('HAL processed')
+# process_paper_with_code()
+# print('Paper with code processed')
+# process_hal()
+# print('HAL processed')
+process_github()
+print('Github processed')
 
 # Load all RDF files in data/rdf
 # Create a graph
