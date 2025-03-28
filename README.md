@@ -190,6 +190,8 @@ classDiagram
 
   class ResourceIdentifier["datacite:ResourceIdentifier"]
 
+  class GitHubIdentifier
+
   class RepositoryIdentifier
 
   class Person["foaf:Person"] {
@@ -258,6 +260,7 @@ classDiagram
   Identifier <|-- OrganizationIdentifier
   Identifier <|-- PersonalIdentifier
   Identifier <|-- PublicationIdentifier
+  RepositoryIdentifier <|-- GitHubIdentifier
   
 ```
 

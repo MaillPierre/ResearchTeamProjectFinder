@@ -6,3 +6,5 @@ tmp/
 data/hal/software/
 
 .env
+
+data/github/
