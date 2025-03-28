@@ -78,7 +78,6 @@ def json_encode_paginated_list(paginated_list: PaginatedList):
     print("encoding paginated list", paginated_list.totalCount)
     json_list = []
     for item in paginated_list:
-        print(item)
         json_list.append(item.raw_data)
 
     return json.JSONEncoder().encode(json_list)
