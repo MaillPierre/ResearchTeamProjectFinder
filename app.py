@@ -5,7 +5,7 @@ from rdflib import Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
 import xml.etree.ElementTree as ET
-from github import Github, PaginatedList, NamedUser
+from github import Github, PaginatedList, NamedUser, enable_console_debug_logging
 from github import Auth
 import os
 import json
@@ -76,16 +76,10 @@ def create_uri(s):
 
 def json_encode_paginated_list(paginated_list: PaginatedList):
     print("encoding paginated list", paginated_list.totalCount)
-    max_items = paginated_list.totalCount
     json_list = []
-    num_page = 0;
-    while len(json_list) < max_items:
-        paginated_list = paginated_list.get_page(num_page)
-        print(f'Processing page {num_page} of {max_items}')
-        for item in paginated_list:
-            print(item)
-            json_list.append(item.raw_data)
-        num_page += 1
+    for item in paginated_list:
+        print(item)
+        json_list.append(item.raw_data)
 
     return json.JSONEncoder().encode(json_list)
 
@@ -506,6 +500,7 @@ def process_github():
     # Connect to the Github API
     github_token = os.getenv('github_token')
     g = Github(github_token)
+    # enable_console_debug_logging() # Enable debug logging
     print(f'Connected to Github as {g.get_user().login}')
     
     # Sandbox query: list the repositories including INRIA
@@ -542,43 +537,59 @@ def process_github():
     print("Known people:")
     current_person_uri = None
     current_person_names = []
-    for row in g_known_person.query(query):
-        print(current_person_uri, current_person_names)
-        if(current_person_uri != None):
-            if(current_person_uri != row.person):
+
+    def search_for_person(person_names):
+        # Search for the person in Github
+        person_query_string_list = list(map(lambda x: f'{x}', person_names))
+        person_query_string_list = sorted(person_query_string_list, key=len, reverse=True)[:5]
+        person_query = " OR ".join(person_query_string_list)
+        if(len(person_query) > max_query_length):
+            person_query = person_query[:max_query_length - 1]
+        print(person_query)
+        user_results_json_filename = 'data/github/' + hashlib.md5(person_query.encode()).hexdigest() + '.json'
+        user_results = None
+        if not os.path.exists(user_results_json_filename):
+            user_results = g.search_users(person_query)
+            print(f'Found {user_results.totalCount} users')
+            print(user_results)
+            user_results_json = json_encode_paginated_list(user_results)
+            user_results_json_file = open(user_results_json_filename, 'w')
+            user_results_json_file.write(user_results_json)
+            user_results_json_file.close()
+        else:
+            user_results_json_file = open(user_results_json_filename, 'r')
+            user_results_json = user_results_json_file.read()
+            user_results_json_file.close()
+            user_results = json.JSONDecoder().decode(user_results_json)
+        for user in user_results:
+            print(user)
+            # print(user.raw_data)
+            # print(user.get_json())
+            # print(user.get_json()['login'])
+            # print(user.get_json()['name'])
+
+    iterator = iter(g_known_person.query(query))
+    # Iterate over the results
+    while True:
+        try:
+            row = next(iterator)
+            if(current_person_uri == None):
+                current_person_uri = row.person
+                current_person_names.append(row.name)
+            if(current_person_uri != row.person or current_person_uri == None):
                 if(len(current_person_names) > 0):
                     # We have a person with at least some known names
                     # prepare the query to the Github API
-                    person_query_string_list = list(map(lambda x: f'{x}', current_person_names))
-                    person_query_string_list = sorted(person_query_string_list, key=len, reverse=True)[:5]
-                    print(person_query_string_list)
-                    person_query = quote_plus(" OR ".join(person_query_string_list))
-                    if(len(person_query) > max_query_length): # Truncate the query if it is too long
-                        person_query = person_query[:max_query_length - 1]
-                    print(person_query)
-                    user_results_json_filename = 'data/github/' + hashlib.md5(person_query.encode()).hexdigest() + '.json'
-                    user_results = []
-                    if not os.path.exists(user_results_json_filename):
-                        print(f'{current_person_uri} - {current_person_names}')
-                        user_results = g.search_users(person_query)
-                        user_results_json = json_encode_paginated_list(user_results)
-                        user_results_json_file = open(user_results_json_filename, 'w')
-                        user_results_json_file.write(user_results_json)
-                        user_results_json_file.close()
-                    # else:
-                    #     user_results_json_file = open(user_results_json_filename, 'r')
-                    #     user_results_json = json.load(user_results_json_file)
-                    #     user_results_json_file.close()
-                    #     user_results = json.JSONDecoder().decode(user_results_json)
-                    for user in user_results:
-                        print(user.login)
+                    search_for_person(current_person_names)
                 current_person_uri = row.person
                 current_person_names = []
+                current_person_names.append(row.name)
             else:
                 current_person_names.append(row.name)
-        else:
-            current_person_uri = row.person
-            current_person_names.append(row.name)
+        except StopIteration:
+            if(len(current_person_names) > 0):
+                search_for_person(current_person_names)
+            break
 
 
 
