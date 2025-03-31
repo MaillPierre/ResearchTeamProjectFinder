@@ -4,21 +4,35 @@ The aim of this project is to create a tool able to use the different APIs avail
 
 ## Plan
 
-- HAL
-  - [ ] List people and organizations
-  - [ ] List softwares declared
-  - [ ] Scan papers abstract in search for repositories URLs
+Phase 1
+  - HAL
+    - [x] List of people
+    - [ ] List of organizations
+    - [x] List softwares declared
 
-- CrossRef
-  - [ ] Scan papers abstract in search for repositories URLs
+  - Papers with code
+    - [x] List papers and their codes
 
-- Papers with code
-  - [ ] List papers and their codes
+  - Github & GitLab
+    - [x] Retrieve Github account of known people
 
-- Github & GitLab
-  - [ ] Retrieve Github account of known people
-  - [ ] Retrieve repositories mentioning known organizations
-  - [ ] Retrieve repositories mentioning known people
+Phase 2
+  - Consolidation
+    - [ ] Removal of BNodes representing people if they can be merged into a known person
+    - [ ] Removal of Github and Gitlab users that can be discarded as they are not linked to known organisations of repositories
+      - Attempt to make the number of git user tend to one per person per website
+
+Phase 3  
+  - Github & GitLab
+    - [ ] Retrieve repositories linked to known people
+    - [ ] Retrieve repositories linked to known organizations
+    - [ ] Retrieve repositories mentioning known organizations
+
+Optional:
+  - HAL
+    - [ ] Scan papers abstract in search for repositories URLs
+  - CrossRef
+    - [ ] Scan papers abstract in search for repositories URLs
 
 ## Data
 

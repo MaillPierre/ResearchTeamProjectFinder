@@ -42,7 +42,8 @@ localArXiv = URIRef(our_ns + 'Arxiv')
 localGScholar = URIRef(our_ns + 'GoogleScholar')
 localIdRef = URIRef(our_ns + 'IdRef')
 localIdHal = URIRef(our_ns + 'IdHal')
-localIdHal = URIRef(our_ns + 'GitHubIdentifier')
+localGithubUser = URIRef(our_ns + 'GitHubUser')
+localGithubRepo = URIRef(our_ns + 'GitHubRepository')
 
 # Properties
 # pav:retrievedFrom
@@ -55,6 +56,9 @@ admsIdentifier = URIRef(adms_ns + 'identifier')
 
 # sources url
 paper_with_code_url = 'http://paperwithcode.com/'
+
+# Limits
+github_user_results_limit = 20
 
 
 # Helper functions
@@ -493,102 +497,126 @@ def process_github():
     max_query_length = 256
 
     g_Software = Graph()
+    g_software_filename = 'data/rdf/software/github_Software.ttl'
     g_Person = Graph()
+    g_person_filename = 'data/rdf/person/github_Person.ttl'
     g_Organization = Graph()
+    g_organization_filename = 'data/rdf/organization/github_Organization.ttl'
 
     # Connect to the Github API
     github_token = os.getenv('github_token')
     g = Github(github_token)
     # enable_console_debug_logging() # Enable debug logging
     print(f'Connected to Github as {g.get_user().login}')
-    
-    # Sandbox query: list the repositories including INRIA
-    # repos_query = g.search_repositories(query="INRIA", sort="updated", order="asc")
-    # print(f'Found {repos_query.totalCount} repositories')
-    # for repo in repos_query.get_page(0):
-    #     print(f'{repo.full_name} - {repo.description}')
-    #     print("topics:", repo.get_topics())
-    #     print("language:", repo.get_languages())
-    #     print("contributors:", repo.get_contributors())
-    #     print("content:", repo.get_contents(''))
-    #     print("release:", repo.get_releases())
 
-    # Search for specific users
-    ## Load existing users from the graph in rdf/person
-    print("Loading existing users from the graph")
-    g_known_person = Graph()
-    for file in os.listdir('data/rdf/person/'):
-        if file.endswith('.ttl'):
-            g_known_person.parse('data/rdf/person/' + file, format='turtle')
-    print(f'Loaded {len(g_known_person)} triples about people from the graph')
+    def process_github_person():
+        # Search for specific users
+        ## Load existing users from the graph in rdf/person
+        print("Loading existing users from the graph")
+        g_known_person = Graph()
+        for file in os.listdir('data/rdf/person/'):
+            if file.endswith('.ttl'):
+                g_known_person.parse('data/rdf/person/' + file, format='turtle')
+        print(f'Loaded {len(g_known_person)} triples about people from the graph')
 
-    # Retrieve the list of users from the graph
-    query = prepareQuery('''
-        SELECT DISTINCT ?person ?name
-        WHERE {
-            ?person a foaf:Person .
-            { ?person foaf:firstName ?first ;
-                            foaf:lastName ?last .
-                BIND( CONCAT(CONCAT(?first, " "), ?last) AS ?name )
-            }
-        }
-    ''', initNs={'foaf': FOAF})
-    print("Known people:")
-    current_person_uri = None
-    current_person_names = []
-
-    def search_for_person(person_names):
-        # Search for the person in Github
-        person_query_string_list = list(map(lambda x: f'{x}', person_names))
-        person_query_string_list = sorted(person_query_string_list, key=len, reverse=True)[:5]
-        person_query = " OR ".join(person_query_string_list)
-        if(len(person_query) > max_query_length):
-            person_query = person_query[:max_query_length - 1]
-        print(person_query)
-        user_results_json_filename = 'data/github/' + hashlib.md5(person_query.encode()).hexdigest() + '.json'
-        user_results = None
-        if not os.path.exists(user_results_json_filename):
-            user_results = g.search_users(person_query)
-            print(f'Found {user_results.totalCount} users')
-            print(user_results)
-            user_results_json = json_encode_paginated_list(user_results)
-            user_results_json_file = open(user_results_json_filename, 'w')
-            user_results_json_file.write(user_results_json)
-            user_results_json_file.close()
-        else:
-            user_results_json_file = open(user_results_json_filename, 'r')
-            user_results_json = user_results_json_file.read()
-            user_results_json_file.close()
-            user_results = json.JSONDecoder().decode(user_results_json)
-        for user in user_results:
-            print(user)
-            # print(user.raw_data)
-            # print(user.get_json())
-            # print(user.get_json()['login'])
-            # print(user.get_json()['name'])
-
-    iterator = iter(g_known_person.query(query))
-    # Iterate over the results
-    while True:
-        try:
-            row = next(iterator)
-            if(current_person_uri == None):
-                current_person_uri = row.person
-                current_person_names.append(row.name)
-            if(current_person_uri != row.person or current_person_uri == None):
-                if(len(current_person_names) > 0):
-                    # We have a person with at least some known names
-                    # prepare the query to the Github API
-                    search_for_person(current_person_names)
-                current_person_uri = row.person
-                current_person_names = []
-                current_person_names.append(row.name)
+        def search_for_person(current_person_uri, person_names):
+            # Search for the person in Github
+            person_query_string_list = list(map(lambda x: f'{x}', person_names))
+            person_query_string_list = sorted(person_query_string_list, key=len, reverse=True)[:5]
+            person_query = " OR ".join(person_query_string_list)
+            if(len(person_query) > max_query_length):
+                person_query = person_query[:max_query_length - 1]
+            print(person_query)
+            user_results_json_filename = 'data/github/' + hashlib.md5(person_query.encode()).hexdigest() + '.json'
+            user_results = None
+            if not os.path.exists(user_results_json_filename):
+                user_results = g.search_users(person_query)
+                user_results_json = ""
+                print(f'Found {user_results.totalCount} users')
+                if(user_results.totalCount > github_user_results_limit):
+                    user_results = []
+                    user_results_json = json.JSONEncoder().encode(user_results)
+                else:
+                    user_results_json = json_encode_paginated_list(user_results)
+                user_results_json_file = open(user_results_json_filename, 'w')
+                user_results_json_file.write(user_results_json)
+                user_results_json_file.close()
             else:
-                current_person_names.append(row.name)
-        except StopIteration:
-            if(len(current_person_names) > 0):
-                search_for_person(current_person_names)
-            break
+                user_results_json_file = open(user_results_json_filename, 'r')
+                user_results_json = user_results_json_file.read()
+                user_results_json_file.close()
+            user_results = json.JSONDecoder().decode(user_results_json)
+            for user in user_results:
+                user_github_id_uri = create_uri(user['url'])
+                user_github_id_url = Literal(user['url'])
+                print(f'Adding user {user["login"]} to the graph')
+                g_Person.add((current_person_uri, admsIdentifier, user_github_id_uri))
+                g_Person.add((user_github_id_uri, RDF.type, localGithubUser))
+                g_Person.add((user_github_id_uri, pavImportedFrom, user_github_id_url))
+                g_Person.add((user_github_id_uri, pavLastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+                g_Person.add((user_github_id_uri, RDFS.label, Literal(user['login'])))
+                if(user['name'] != None):
+                    g_Person.add((user_github_id_uri, FOAF.name, Literal(user['name'])))
+                if(user['blog'] != None):
+                    g_Person.add((user_github_id_uri, FOAF.homepage, Literal(user['blog'])))
+                if(user['email'] != None):
+                    g_Person.add((user_github_id_uri, FOAF.mbox_sha1sum, Literal(user['email'])))
+                if(user['bio'] != None):
+                    g_Person.add((user_github_id_uri, RDFS.comment, Literal(user['bio'])))
+                if(user['company'] != None):
+                    user_company_node = BNode()
+                    g_Person.add((user_company_node, RDF.type, FOAF.Organization))
+                    g_Person.add((user_company_node, RDFS.label, Literal(user['company'])))
+                    g_Person.add((user_company_node, pavImportedFrom, user_github_id_url))
+                    g_Person.add((user_company_node, pavLastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+                    g_Person.add((user_github_id_uri, FOAF.member, user_company_node))
+                if(user['location'] != None):
+                    g_Person.add((user_github_id_uri, DCTERMS.coverage, Literal(user['location'])))
+
+        # Retrieve the list of users from the graph
+        query = prepareQuery('''
+            SELECT DISTINCT ?person ?name
+            WHERE {
+                ?person a foaf:Person .
+                { ?person foaf:firstName ?first ;
+                                foaf:lastName ?last .
+                    BIND( CONCAT(CONCAT(?first, " "), ?last) AS ?name )
+                }
+            } ORDER BY DESC(?name)
+        ''', initNs={'foaf': FOAF})
+        print("Known people:")
+        current_person_uri = None
+        current_person_names = []
+
+        iterator = iter(g_known_person.query(query))
+        # Iterate over the results
+        while True:
+            try:
+                row = next(iterator)
+                if(current_person_uri == None):
+                    current_person_uri = row.person
+                    current_person_names.append(row.name)
+                if(current_person_uri != row.person or current_person_uri == None):
+                    if(len(current_person_names) > 0):
+                        # We have a person with at least some known names
+                        # prepare the query to the Github API
+                        search_for_person(current_person_uri, current_person_names)
+                    current_person_uri = row.person
+                    current_person_names = []
+                    current_person_names.append(row.name)
+                else:
+                    current_person_names.append(row.name)
+            except StopIteration:
+                if(len(current_person_names) > 0):
+                    search_for_person(current_person_uri, current_person_names)
+                break
+
+    process_github_person()
+
+    print(f"Writing github person graph to file, {len(g_Person)} triples")
+    g_Person.serialize(destination=g_person_filename, format='turtle')
+    print("Github person graph written to file")
+    
 
 
 
