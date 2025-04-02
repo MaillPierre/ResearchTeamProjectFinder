@@ -7,22 +7,27 @@ The aim of this project is to create a tool able to use the different APIs avail
 Phase 1
   - HAL
     - [x] List of people
-    - [ ] List of organizations
-    - [x] List softwares declared
+    - [x] List of organizations
+    - [x] List of softwares
 
   - Papers with code
-    - [x] List papers and their codes
-
-  - Github & GitLab
-    - [x] Retrieve Github account of known people
+    - [x] List of papers and their codes
 
 Phase 2
+  - Github
+    - [x] Retrieve account of known people
+  - Gitlab
+    - [ ] Retrieve account of known people
+
+Phase 3
   - Consolidation
     - [ ] Removal of BNodes representing people if they can be merged into a known person
-    - [ ] Removal of Github and Gitlab users that can be discarded as they are not linked to known organisations of repositories
-      - Attempt to make the number of git user tend to one per person per website
+    - [ ] Removal of Github and Gitlab users that can be discarded because:
+      - they are not linked to known organisations of repositories
+      - they are not linked to any open source repository
+Attempt to make the number of git user tend to one per person per website
 
-Phase 3  
+Phase 4  
   - Github & GitLab
     - [ ] Retrieve repositories linked to known people
     - [ ] Retrieve repositories linked to known organizations
@@ -51,14 +56,24 @@ SPARQL endpoint: https://data.hal.science/doc/sparql
 Research team list:
 
 ```sparql
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
 PREFIX org: <http://www.w3.org/ns/org#>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT DISTINCT ?org ?label ?alt{
-  ?org a <http://www.w3.org/ns/org#OrganizationalUnit> ;
-  	skos:prefLabel ?label ;
-   skos:altLabel ?alt ;
-   org:classification <https://data.archives-ouvertes.fr/vocabulary/StructureTypeResearchteam> .
+PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+PREFIX halschema: <http://data.archives-ouvertes.fr/schema/>
+
+SELECT DISTINCT ?org ?label ?acronym ?id ?superOrg {
+  ?org a org:Organization ;
+      skos:prefLabel ?label ;
+      skos:altLabel ?acronym ;
+      org:classification ?class ;
+      owl:sameAs ?id 
+  OPTIONAL {
+    ?org org:unitOf ?superOrg .
+  }
 }
 ```
 

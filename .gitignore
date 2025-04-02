@@ -8,3 +8,7 @@ data/hal/software/
 .env
 
 data/github/
+
+data/hal/organization/
+
+data/PaperWithCode/

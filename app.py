@@ -4,6 +4,7 @@
 from rdflib import Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
+from rdflib.query import Result
 import xml.etree.ElementTree as ET
 from github import Github, PaginatedList, NamedUser, enable_console_debug_logging
 from github import Auth
@@ -13,9 +14,11 @@ import re
 import datetime
 import requests
 import hashlib
+import asyncio
 from dotenv import load_dotenv
 from urllib.parse import quote_plus, urlencode
 
+# Loading .env variables
 load_dotenv()
 
 # Namespaces
@@ -30,6 +33,9 @@ orcid_ns = "https://orcid.org/"
 hal_ns = "https://hal.science/"
 hal_author_ns = "https://shs.hal.science/search/index/q/*/authIdHal_s/"
 arxiv_ns = "https://arxiv.org/abs/"
+idref_ns = "https://www.idref.fr/"
+ror_ns = "https://ror.org/"
+gscholar_ns = "https://scholar.google.com/citations?user="
 
 # classes
 biboDocument = URIRef(bibo_ns + 'Document')
@@ -42,6 +48,7 @@ localArXiv = URIRef(our_ns + 'Arxiv')
 localGScholar = URIRef(our_ns + 'GoogleScholar')
 localIdRef = URIRef(our_ns + 'IdRef')
 localIdHal = URIRef(our_ns + 'IdHal')
+localHalOrganization = URIRef(our_ns + 'HalOrganization')
 localGithubUser = URIRef(our_ns + 'GitHubUser')
 localGithubRepo = URIRef(our_ns + 'GitHubRepository')
 
@@ -58,16 +65,23 @@ admsIdentifier = URIRef(adms_ns + 'identifier')
 paper_with_code_url = 'http://paperwithcode.com/'
 
 # Limits
-github_user_results_limit = 20
+# # Limit the number of results from github when looking for the ids of one person. Above this limit, the results are not added to the graph
+github_user_results_limit = int(os.getenv('github_user_results_limit'))
 
 
 # Helper functions
 
 def sanitize_uri(s):
-    match = re.search(r"(^(([^:/?#\s]+):)(\/\/([^/?#\s]*))?([^?#\s=]*)(\?([^#\s]*))?(#(\w*))?)", s)
-    if match == None:
+    malformed_uri_repeating_domains = r"(https?://[\w./]+)(https?://[\w./]+)"
+    standard_uri_regex = r"(^(([^:/?#\s]+):)(\/\/([^/?#\s]*))?([^?#\s=]*)(\?([^#\s]*))?(#(\w*))?)"
+
+    # Remove malformed uri
+    s = re.sub(malformed_uri_repeating_domains, r"\2", s)
+
+    match_standard_uri = re.search(standard_uri_regex, s)
+    if match_standard_uri == None:
         return None
-    return match.group(1)
+    return match_standard_uri.group(1)
 
 def sanitize(s):
     return re.sub(r"\\[ux][0-9A-Fa-f]+", '', s)
@@ -79,7 +93,6 @@ def create_uri(s):
     return URIRef(sanitize_uri(s))
 
 def json_encode_paginated_list(paginated_list: PaginatedList):
-    print("encoding paginated list", paginated_list.totalCount)
     json_list = []
     for item in paginated_list:
         json_list.append(item.raw_data)
@@ -417,10 +430,92 @@ def process_hal():
                 print(f'Added software {software[title_field]}')
             page += 1
 
+    def process_hal_organization():
+        # load existing organisations from the graph in rdf/organization
+        print("Loading existing organisations from the graph")
+        for file in os.listdir('data/rdf/organization/'):
+            if file.endswith('.ttl'):
+                g_organization.parse('data/rdf/organization/' + file, format='turtle')
+        print(f'Loaded {len(g_organization)} triples about organizations from the graph')
+
+        hal_sparql_endpoint = "http://sparql.archives-ouvertes.fr/sparql"
+        hal_sparql_endpoint_uri = create_uri(hal_sparql_endpoint)
+        hal_org_sparql_query_string = f'''
+        PREFIX dct: <http://purl.org/dc/terms/>
+        PREFIX dc: <http://purl.org/dc/elements/1.1/>
+        PREFIX owl: <http://www.w3.org/2002/07/owl#>
+        PREFIX org: <http://www.w3.org/ns/org#>
+        PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+        PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+        PREFIX halschema: <http://data.archives-ouvertes.fr/schema/>
+
+        SELECT DISTINCT ?org ?label ?acronym ?id ?superOrg ?superOrgId ?superOrgLabel {{
+            SERVICE <{hal_sparql_endpoint}> {{
+                ?org a org:Organization ;
+                    skos:prefLabel ?label ;
+                    owl:sameAs ?id .
+                OPTIONAL {{
+                    ?org org:unitOf ?superOrg .
+                    ?superOrg owl:sameAs ?superOrgId ;
+                        skos:prefLabel ?superOrgLabel .
+                }}
+                OPTIONAL {{
+                    ?org skos:altLabel ?acronym .
+                }}
+            }}
+        }}'''
+
+        # Check if the result of the query is not already in the cache
+        hal_sparql_query_result_filename = f"data/hal/organization/{hashlib.md5(hal_org_sparql_query_string.encode()).hexdigest()}.json"
+        if(os.path.exists(hal_sparql_query_result_filename)):
+            hal_sparql_query_file = open(hal_sparql_query_result_filename, 'r')
+            hal_org_results = Result.parse(hal_sparql_query_file, format='json')
+            hal_sparql_query_file.close()
+        else:
+            # Send GET request to the HAL API
+            hal_sparql_query = prepareQuery(hal_org_sparql_query_string)
+            print(f"Sending query to HAL SPARQL endpoint: {hal_org_sparql_query_string}")
+            hal_org_results = g_organization.query(hal_sparql_query)
+            print(f"Query result: {len(hal_org_results)} results")
+            hal_sparql_query_file = open(hal_sparql_query_result_filename, 'w')
+            hal_org_results.serialize(hal_sparql_query_file, format='json')
+            hal_sparql_query_file.close()
+
+        # Send GET request to the HAL API
+        for binding in hal_org_results:
+            org_uri = create_uri(str(binding['org']))
+            org_id_uri = create_uri(str(binding['id']))
+            if( (org_uri, RDF.type, localHalOrganization) not in g_organization):
+                g_organization.add((org_uri, RDF.type, localHalOrganization))
+                g_organization.add((org_uri, admsIdentifier, org_id_uri))
+                g_organization.add((org_id_uri, RDF.type, dataciteOrganizationIdentifier))
+                g_organization.add((org_uri, pavRetrievedFrom, Literal(hal_org_sparql_query_string)))
+                g_organization.add((org_uri, pavRetrievedFrom, hal_sparql_endpoint_uri))
+                g_organization.add((org_uri, RDFS.label, Literal(binding['label'])))
+                if(binding['acronym'] != None):
+                    g_organization.add((org_uri, FOAF.name, Literal(binding['acronym'])))
+                if(binding['superOrg'] != None):
+                    super_org_uri = create_uri(str(binding['superOrg']))
+                    super_org_id_uri = create_uri(str(binding['superOrgId']))
+                    super_org_label = Literal(binding['superOrgLabel'])
+                    g_organization.add((org_uri, DCTERMS.relation, super_org_uri))
+                    g_organization.add((super_org_uri, RDF.type, localHalOrganization))
+                    g_organization.add((super_org_uri, pavRetrievedFrom, Literal(hal_org_sparql_query_string)))
+                    g_organization.add((super_org_uri, pavRetrievedFrom, hal_sparql_endpoint_uri))
+                    g_organization.add((super_org_uri, admsIdentifier, super_org_id_uri))
+                    g_organization.add((super_org_id_uri, RDF.type, dataciteOrganizationIdentifier))
+                    g_organization.add((super_org_uri, RDFS.label, super_org_label))
+        # writing Hal roganisation to file
+        print(f'Writing organization graph to file {len(g_organization)} triples')
+        g_organization.serialize(destination=g_organization_filename, format='turtle')
+        print('Graph written to file')
+
                 
 
     process_hal_authors()
     process_hal_software()
+    process_hal_organization()
     
     # writing g to a file
     print(f'Writing software graph to file {len(g_software)} triples')
@@ -429,8 +524,8 @@ def process_hal():
     g_person.serialize(destination=g_person_filename, format='turtle')
     print(f'Writing organization graph to file {len(g_organization)} triples')
     g_organization.serialize(destination=g_organization_filename, format='turtle')
-    print(f'Writing article graph to file {len(g_article)} triples')
-    g_article.serialize(destination=g_article_filename, format='turtle')
+    # print(f'Writing article graph to file {len(g_article)} triples')
+    # g_article.serialize(destination=g_article_filename, format='turtle')
     print('Graphs written to file')
 
 # Parse the Paper with code json files and creates the corresponding data containing information on the papers and the code
@@ -487,9 +582,9 @@ def process_paper_with_code():
     g_paper.add((paper_with_code, pavLastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
 
     # writing g to a file
-    print(f'Writing paper graph to file {len(g)} triples')
+    print(f'Writing paper graph to file {len(g_paper)} triples')
     g_paper.serialize(destination=g_paper_filename, format='turtle')
-    print(f'Writing code graph to file {len(g)} triples')
+    print(f'Writing code graph to file {len(g_code)} triples')
     g_code.serialize(destination=g_code_filename, format='turtle')
     print('Graph written to file')
 
