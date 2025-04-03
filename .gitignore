@@ -12,3 +12,8 @@ data/github/
 data/hal/organization/
 
 data/PaperWithCode/
+
+data/gitlab/
+
+src/python/*/__pycache__/
+src/*/__pycache__/

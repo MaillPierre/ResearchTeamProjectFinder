@@ -17,7 +17,9 @@ Phase 2
   - Github
     - [x] Retrieve account of known people
   - Gitlab
-    - [ ] Retrieve account of known people
+    - [x] Retrieve open source repositories
+    - [ ] Retrieve the accounts of the creator of open source repositories
+  - Zenodo
 
 Phase 3
   - Consolidation
@@ -25,11 +27,14 @@ Phase 3
     - [ ] Removal of Github and Gitlab users that can be discarded because:
       - they are not linked to known organisations of repositories
       - they are not linked to any open source repository
+      - they are not linked to any known person
+      - they are not linked to any known organization
 Attempt to make the number of git user tend to one per person per website
 
 Phase 4  
   - Github & GitLab
-    - [ ] Retrieve repositories linked to known people
+    - [ ] Retrieve account of known people
+    - [ ] Remove repositories linked to known people
     - [ ] Retrieve repositories linked to known organizations
     - [ ] Retrieve repositories mentioning known organizations
 
