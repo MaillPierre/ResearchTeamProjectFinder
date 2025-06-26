@@ -8,12 +8,12 @@ import datetime
 import hashlib
 import logging
 
+g_gl_Software = Graph()
+g_gl_software_filename = 'data/rdf/software/gitlab_Software.ttl'
+g_gl_Person = Graph()
+g_gl_person_filename = 'data/rdf/person/gitlab_Person.ttl'
 
 def process_gitlab(gitlab_instance_url = 'https://gitlab.inria.fr', gitlab_instance_token = os.getenv('gitlab_inria_token')):
-    g_Software = Graph()
-    g_software_filename = 'data/rdf/software/gitlab_Software.ttl'
-    g_Person = Graph()
-    g_person_filename = 'data/rdf/person/gitlab_Person.ttl'
 
     gitlab_forge_uri = create_uri(gitlab_instance_url)
 
@@ -68,43 +68,48 @@ def process_gitlab(gitlab_instance_url = 'https://gitlab.inria.fr', gitlab_insta
         project_license_obj = full_project_json['license']
         if(project_license_obj != None and project_license_obj['html_url'] != None):
             # Add the project to the graph
-            g_Software.add((project_uri, RDF.type, local_GitlabRepo))
-            g_Software.add((project_uri, pav_importedFrom, project_query_literal))
-            g_Software.add((project_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
-            g_Software.add((project_uri, pav_retrievedFrom, gitlab_forge_uri))
-            g_Software.add((project_uri, adms_identifier, project_uri))
-            g_Software.add((project_uri, RDFS.label, project_name_literal))
-            g_Software.add((project_uri, DCTERMS.abstract, project_description_literal))
+            g_gl_Software.add((project_uri, RDF.type, local_GitlabRepo))
+            g_gl_Software.add((project_uri, pav_importedFrom, project_query_literal))
+            g_gl_Software.add((project_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+            g_gl_Software.add((project_uri, pav_retrievedFrom, gitlab_forge_uri))
+            g_gl_Software.add((project_uri, adms_identifier, project_uri))
+            g_gl_Software.add((project_uri, RDFS.label, project_name_literal))
+            g_gl_Software.add((project_uri, DCTERMS.abstract, project_description_literal))
 
             if('last_activity_at' in full_project_json and full_project_json['last_activity_at'] != None):
                 project_last_activity_literal = Literal(full_project_json['last_activity_at'])
-                g_Software.add((project_uri, DCTERMS.modified, project_last_activity_literal))
+                g_gl_Software.add((project_uri, DCTERMS.modified, project_last_activity_literal))
             if('star_count' in full_project_json and full_project_json['star_count'] != None):
                 project_star_count_literal = Literal(full_project_json['star_count'])
-                g_Software.add((project_uri, local_repository_stars, project_star_count_literal))
+                g_gl_Software.add((project_uri, local_repository_stars, project_star_count_literal))
             if('forks_count' in full_project_json and full_project_json['forks_count'] != None):
                 project_forks_count_literal = Literal(full_project_json['forks_count'])
-                g_Software.add((project_uri, local_repository_forks, project_forks_count_literal))
+                g_gl_Software.add((project_uri, local_repository_forks, project_forks_count_literal))
             if('topics' in full_project_json and full_project_json['topics'] != None):
                 for topic in full_project_json['topics']:
                     topic_literal = Literal(topic)
-                    g_Software.add((project_uri, DCTERMS.subject, topic_literal))
+                    g_gl_Software.add((project_uri, DCTERMS.subject, topic_literal))
 
             project_license_uri = create_uri(project_license_obj['html_url'])
-            g_Software.add((project_uri, DCTERMS.license, project_license_uri))
-            g_Software.add((project_license_uri, RDF.type, cc_License))
-            g_Software.add((project_license_uri, pav_importedFrom, project_query_literal))
-            g_Software.add((project_license_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
-            g_Software.add((project_license_uri, pav_retrievedFrom, gitlab_forge_uri))
+            g_gl_Software.add((project_uri, DCTERMS.license, project_license_uri))
+            g_gl_Software.add((project_license_uri, RDF.type, cc_License))
+            g_gl_Software.add((project_license_uri, pav_importedFrom, project_query_literal))
+            g_gl_Software.add((project_license_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+            g_gl_Software.add((project_license_uri, pav_retrievedFrom, gitlab_forge_uri))
             if(project_license_obj['name'] != None):
                 project_license_name_literal = Literal(project_license_obj['name'])
-                g_Software.add((project_license_uri, RDFS.label, project_license_name_literal))
+                g_gl_Software.add((project_license_uri, RDFS.label, project_license_name_literal))
             if(project_license_obj['nickname'] != None):
                 project_license_alt_name = Literal(project_license_obj['nickname'])
-                g_Software.add((project_license_uri, DCTERMS.alternative, project_license_alt_name))
+                g_gl_Software.add((project_license_uri, DCTERMS.alternative, project_license_alt_name))
 
+    write_gitlab_graph()
+
+def write_gitlab_graph():
     # Writing the graph to a file
-    logging.info(f'Writing software graph to file {len(g_Software)} triples')
-    g_Software.serialize(destination=g_software_filename, format='turtle')
+    logging.info(f'Writing software graph to file {len(g_gl_Software)} triples')
+    g_gl_Software.serialize(destination=g_gl_software_filename, format='turtle')
+    logging.info(f'Writing person graph to file {len(g_gl_Person)} triples')
+    g_gl_Person.serialize(destination=g_gl_person_filename, format='turtle')
     logging.info('Graph written to file')
 

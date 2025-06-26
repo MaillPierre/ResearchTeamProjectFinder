@@ -13,16 +13,17 @@ import logging
 # # Limit the number of results from github when looking for the ids of one person. Above this limit, the results are not added to the graph
 github_user_results_limit = int(os.getenv('github_user_results_limit'))
 
+g_gh_Software = Graph()
+g_gh_software_filename = 'data/rdf/software/github_Software.ttl'
+g_gh_Person = Graph()
+g_gh_person_filename = 'data/rdf/person/github_Person.ttl'
+g_gh_Organization = Graph()
+g_gh_organization_filename = 'data/rdf/organization/github_Organization.ttl'
+
 
 def process_github():
     max_query_length = 256
 
-    g_Software = Graph()
-    g_software_filename = 'data/rdf/software/github_Software.ttl'
-    g_Person = Graph()
-    g_person_filename = 'data/rdf/person/github_Person.ttl'
-    g_Organization = Graph()
-    g_organization_filename = 'data/rdf/organization/github_Organization.ttl'
 
     # Connect to the Github API
     github_token = os.getenv('github_token')
@@ -70,28 +71,28 @@ def process_github():
                 user_github_id_uri = create_uri(user['url'])
                 user_github_id_url = Literal(user['url'])
                 logging.info(f'Adding user {user["login"]} to the graph')
-                g_Person.add((current_person_uri, adms_identifier, user_github_id_uri))
-                g_Person.add((user_github_id_uri, RDF.type, local_GithubUser))
-                g_Person.add((user_github_id_uri, pav_importedFrom, user_github_id_url))
-                g_Person.add((user_github_id_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
-                g_Person.add((user_github_id_uri, RDFS.label, Literal(user['login'])))
+                g_gh_Person.add((current_person_uri, adms_identifier, user_github_id_uri))
+                g_gh_Person.add((user_github_id_uri, RDF.type, local_GithubUser))
+                g_gh_Person.add((user_github_id_uri, pav_importedFrom, user_github_id_url))
+                g_gh_Person.add((user_github_id_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+                g_gh_Person.add((user_github_id_uri, RDFS.label, Literal(user['login'])))
                 if(user['name'] != None):
-                    g_Person.add((user_github_id_uri, FOAF.name, Literal(user['name'])))
+                    g_gh_Person.add((user_github_id_uri, FOAF.name, Literal(user['name'])))
                 if(user['blog'] != None):
-                    g_Person.add((user_github_id_uri, FOAF.homepage, Literal(user['blog'])))
+                    g_gh_Person.add((user_github_id_uri, FOAF.homepage, Literal(user['blog'])))
                 if(user['email'] != None):
-                    g_Person.add((user_github_id_uri, FOAF.mbox_sha1sum, Literal(user['email'])))
+                    g_gh_Person.add((user_github_id_uri, FOAF.mbox_sha1sum, Literal(user['email'])))
                 if(user['bio'] != None):
-                    g_Person.add((user_github_id_uri, RDFS.comment, Literal(user['bio'])))
+                    g_gh_Person.add((user_github_id_uri, RDFS.comment, Literal(user['bio'])))
                 if(user['company'] != None):
                     user_company_node = BNode()
-                    g_Person.add((user_company_node, RDF.type, FOAF.Organization))
-                    g_Person.add((user_company_node, RDFS.label, Literal(user['company'])))
-                    g_Person.add((user_company_node, pav_importedFrom, user_github_id_url))
-                    g_Person.add((user_company_node, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
-                    g_Person.add((user_github_id_uri, FOAF.member, user_company_node))
+                    g_gh_Person.add((user_company_node, RDF.type, FOAF.Organization))
+                    g_gh_Person.add((user_company_node, RDFS.label, Literal(user['company'])))
+                    g_gh_Person.add((user_company_node, pav_importedFrom, user_github_id_url))
+                    g_gh_Person.add((user_company_node, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
+                    g_gh_Person.add((user_github_id_uri, FOAF.member, user_company_node))
                 if(user['location'] != None):
-                    g_Person.add((user_github_id_uri, DCTERMS.coverage, Literal(user['location'])))
+                    g_gh_Person.add((user_github_id_uri, DCTERMS.coverage, Literal(user['location'])))
 
         # Retrieve the list of users from the graph
         query = prepareQuery('''
@@ -131,10 +132,20 @@ def process_github():
                 break
 
     process_github_person()
+    # TODO: Process github organizations and open-source repositories front pages
 
-    logging.info(f"Writing github person graph to file, {len(g_Person)} triples")
-    g_Person.serialize(destination=g_person_filename, format='turtle')
+    write_github_graph()
+
+def write_github_graph():
+    logging.info(f"Writing github person graph to file, {len(g_gh_Person)} triples")
+    g_gh_Person.serialize(destination=g_gh_person_filename, format='turtle')
     logging.info("Github person graph written to file")
-    g_Person.close()
-    g_Software.close()
-    g_Organization.close()
+    g_gh_Person.close()
+    logging.info(f"Writing github software graph to file, {len(g_gh_Software)} triples")
+    g_gh_Software.serialize(destination=g_gh_software_filename, format='turtle')
+    logging.info("Github software graph written to file")
+    g_gh_Software.close()
+    logging.info(f"Writing github organization graph to file, {len(g_gh_Organization)} triples")
+    g_gh_Organization.serialize(destination=g_gh_organization_filename, format='turtle')
+    logging.info("Github organization graph written to file")
+    g_gh_Organization.close()

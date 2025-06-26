@@ -16,9 +16,11 @@ Phase 1
 Phase 2
   - Github
     - [x] Retrieve account of known people
+        - [ ] Retrieve open-source repositories of known peoples
+            - [ ] Retrieve organization of known people with open-source repositories
   - Gitlab
     - [x] Retrieve open source repositories
-    - [ ] Retrieve the accounts of the creator of open source repositories
+        - [ ] Retrieve the accounts of the creator of open source repositories
   - Zenodo
 
 Phase 3
@@ -43,6 +45,8 @@ Optional:
     - [ ] Scan papers abstract in search for repositories URLs
   - CrossRef
     - [ ] Scan papers abstract in search for repositories URLs
+  - General
+    - [ ] multithreading of independant treatments
 
 ## Data
 
@@ -148,6 +152,10 @@ https://github.com/ORCID/orcid-conversion-lib
 
 Must be done manually
 [BIL](https://bil.inria.fr/fr/catalog/listby/researcherWebPage)
+
+Ongoing ticket for database content export
+
+Manual export of CSV for each INRIA center give different columns headers
 
 ### IdRef
 
@@ -298,7 +306,20 @@ classDiagram
   
 ```
 
-For later: 
+## Results
+
+Report of the latest update open-source projects maintained by INRIA researchers or, ore generally by public research european organizations.
+
+For each source:
+- Number of researchers
+- Number of repositories
+- Number of papers
+
+For each unified researcher:
+- Number of repositories
+- Number of papers
+
+## For later: 
 - Extract URLs from publications using python code
 - Use of [OpenRefine](https://openrefine.org/)
   - Search for Github URLs in abstracts
@@ -306,4 +327,4 @@ For later:
 - Use Tesseract to find GitHub URLs in articles
 
 Note:
-- ORKG judged too poor to be used. too few Organization, schema and API inconsistent
+- ORKG judged too poor to be used. too few Organizations, schema and API inconsistent
