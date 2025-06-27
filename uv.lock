@@ -316,6 +316,7 @@ dependencies = [
     { name = "pygithub" },
     { name = "python-gitlab" },
     { name = "rdflib" },
+    { name = "sparqlwrapper" },
 ]
 
 [package.metadata]
@@ -324,6 +325,19 @@ requires-dist = [
     { name = "pygithub", specifier = ">=2.6.1" },
     { name = "python-gitlab", specifier = ">=6.0.0" },
     { name = "rdflib", specifier = ">=7.1.4" },
+    { name = "sparqlwrapper", specifier = ">=2.0.0" },
+]
+
+[[package]]
+name = "sparqlwrapper"
+version = "2.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rdflib" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4e/cc/453752fffa759ef41a3ceadb3f167e13dae1a74c1db057d9f6a7affa9240/SPARQLWrapper-2.0.0.tar.gz", hash = "sha256:3fed3ebcc77617a4a74d2644b86fd88e0f32e7f7003ac7b2b334c026201731f1", size = 98429, upload_time = "2022-03-13T23:14:00.671Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/89/176e3db96e31e795d7dfd91dd67749d3d1f0316bb30c6931a6140e1a0477/SPARQLWrapper-2.0.0-py3-none-any.whl", hash = "sha256:c99a7204fff676ee28e6acef327dc1ff8451c6f7217dcd8d49e8872f324a8a20", size = 28620, upload_time = "2022-03-13T23:13:58.969Z" },
 ]
 
 [[package]]

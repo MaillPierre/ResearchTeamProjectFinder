@@ -323,6 +323,7 @@ For each unified researcher:
   - Search for Github URLs in abstracts
 - Search for DOI in GitHub READMEs ?
 - Use Tesseract to find GitHub URLs in articles
+- use a Fuseki server along with sparqlwrapper library to make the update of graphs faster
 
 Note:
 - ORKG judged too poor to be used. too few Organizations, schema and API inconsistent

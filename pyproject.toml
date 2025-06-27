@@ -9,4 +9,5 @@ dependencies = [
     "pygithub>=2.6.1",
     "python-gitlab>=6.0.0",
     "rdflib>=7.1.4",
+    "sparqlwrapper>=2.0.0",
 ]
