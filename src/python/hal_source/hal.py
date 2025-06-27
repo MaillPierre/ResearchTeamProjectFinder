@@ -431,12 +431,21 @@ def process_hal():
     
 def write_hal_graph():
     # writing g to a file
-    logging.info(f'Writing software graph to file {len(g_h_software)} triples')
-    g_h_software.serialize(destination=g_h_software_filename, format='turtle')
-    logging.info(f'Writing person graph to file {len(g_h_person)} triples')
-    g_h_person.serialize(destination=g_h_person_filename, format='turtle')
-    logging.info(f'Writing organization graph to file {len(g_h_organization)} triples')
-    g_h_organization.serialize(destination=g_h_organization_filename, format='turtle')
-    logging.info(f'Writing article graph to file {len(g_h_article)} triples')
-    g_h_article.serialize(destination=g_h_article_filename, format='turtle')
-    logging.info('Graphs written to file')
+    if len(g_h_software) > 0:
+        logging.info(f'Writing software graph to file {len(g_h_software)} triples')
+        g_h_software.serialize(destination=g_h_software_filename, format='turtle')
+    g_h_software.close()
+    if len(g_h_person) > 0:
+        logging.info(f'Writing person graph to file {len(g_h_person)} triples')
+        g_h_person.serialize(destination=g_h_person_filename, format='turtle')
+    g_h_person.close()
+    if len(g_h_organization) > 0:
+        logging.info(f'Writing organization graph to file {len(g_h_organization)} triples')
+        g_h_organization.serialize(destination=g_h_organization_filename, format='turtle')
+    g_h_organization.close()
+    if len(g_h_article) > 0:
+        logging.info(f'Writing article graph to file {len(g_h_article)} triples')
+        g_h_article.serialize(destination=g_h_article_filename, format='turtle')
+    g_h_article.close()
+    if len(g_h_software) > 0 or len(g_h_person) > 0 or len(g_h_organization) > 0 or len(g_h_article) > 0:
+        logging.info('Hal graphs written to file')

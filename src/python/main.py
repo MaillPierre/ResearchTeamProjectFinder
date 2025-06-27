@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from hal_source.hal import process_hal, write_hal_graph
+from  hal_source.hal import process_hal, write_hal_graph
 from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
 from paper_with_code_source.paper_with_code import process_paper_with_code, write_paper_with_code_graph

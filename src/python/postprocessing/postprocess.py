@@ -1,0 +1,2 @@
+
+# Gather all RDF file and try to coalesce persons, softwares and organizations across sources, then try to distill a list of active open-source projects with their authors and their respective organization.

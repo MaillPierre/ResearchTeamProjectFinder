@@ -107,9 +107,14 @@ def process_gitlab(gitlab_instance_url = 'https://gitlab.inria.fr', gitlab_insta
 
 def write_gitlab_graph():
     # Writing the graph to a file
-    logging.info(f'Writing software graph to file {len(g_gl_Software)} triples')
-    g_gl_Software.serialize(destination=g_gl_software_filename, format='turtle')
-    logging.info(f'Writing person graph to file {len(g_gl_Person)} triples')
-    g_gl_Person.serialize(destination=g_gl_person_filename, format='turtle')
-    logging.info('Graph written to file')
+    if len(g_gl_Software) > 0:
+        logging.info(f'Writing software graph to file {len(g_gl_Software)} triples')
+        g_gl_Software.serialize(destination=g_gl_software_filename, format='turtle')
+    g_gl_Software.close()
+    if len(g_gl_Person) > 0:
+        logging.info(f'Writing person graph to file {len(g_gl_Person)} triples')
+        g_gl_Person.serialize(destination=g_gl_person_filename, format='turtle')
+    g_gl_Person.close()
+    if (len(g_gl_Software) > 0) or (len(g_gl_Person) > 0):
+        logging.info('Gitlab graph written to file')
 

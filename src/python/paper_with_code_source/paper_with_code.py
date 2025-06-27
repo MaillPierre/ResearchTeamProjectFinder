@@ -67,10 +67,13 @@ def process_paper_with_code():
 
 def write_paper_with_code_graph():
     # writing g to a file
-    logging.info(f'Writing paper with code paper graph to file {len(g_pwc_paper)} triples')
-    g_pwc_paper.serialize(destination=g_pwc_paper_filename, format='turtle')
+    if len(g_pwc_paper) > 0:
+        logging.info(f'Writing paper with code paper graph to file {len(g_pwc_paper)} triples')
+        g_pwc_paper.serialize(destination=g_pwc_paper_filename, format='turtle')
     g_pwc_paper.close()
-    logging.info(f'Writing paper with code paper code graph to file {len(g_pwc_code)} triples')
-    g_pwc_code.serialize(destination=g_pwc_code_filename, format='turtle')
+    if len(g_pwc_code) > 0:
+        logging.info(f'Writing paper with code paper code graph to file {len(g_pwc_code)} triples')
+        g_pwc_code.serialize(destination=g_pwc_code_filename, format='turtle')
     g_pwc_code.close()
-    logging.info('Paper with code paper graph written to file')
+    if len(g_pwc_paper) > 0 or len(g_pwc_code) > 0:
+        logging.info('Paper with code paper graph written to file')

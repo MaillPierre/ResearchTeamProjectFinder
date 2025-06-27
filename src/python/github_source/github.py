@@ -133,19 +133,22 @@ def process_github():
 
     process_github_person()
     # TODO: Process github organizations and open-source repositories front pages
-
     write_github_graph()
 
+
 def write_github_graph():
-    logging.info(f"Writing github person graph to file, {len(g_gh_Person)} triples")
-    g_gh_Person.serialize(destination=g_gh_person_filename, format='turtle')
-    logging.info("Github person graph written to file")
+    if len(g_gh_Person) > 0:
+        logging.info(f"Writing github person graph to file, {len(g_gh_Person)} triples")
+        g_gh_Person.serialize(destination=g_gh_person_filename, format='turtle')
+        logging.info("Github person graph written to file")
     g_gh_Person.close()
-    logging.info(f"Writing github software graph to file, {len(g_gh_Software)} triples")
-    g_gh_Software.serialize(destination=g_gh_software_filename, format='turtle')
-    logging.info("Github software graph written to file")
+    if len(g_gh_Software) > 0:
+        logging.info(f"Writing github software graph to file, {len(g_gh_Software)} triples")
+        g_gh_Software.serialize(destination=g_gh_software_filename, format='turtle')
+        logging.info("Github software graph written to file")
     g_gh_Software.close()
-    logging.info(f"Writing github organization graph to file, {len(g_gh_Organization)} triples")
-    g_gh_Organization.serialize(destination=g_gh_organization_filename, format='turtle')
-    logging.info("Github organization graph written to file")
+    if len(g_gh_Organization) > 0:
+        logging.info(f"Writing github organization graph to file, {len(g_gh_Organization)} triples")
+        g_gh_Organization.serialize(destination=g_gh_organization_filename, format='turtle')
+        logging.info("Github organization graph written to file")
     g_gh_Organization.close()

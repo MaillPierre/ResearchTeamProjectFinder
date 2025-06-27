@@ -18,7 +18,7 @@ Phase 2
     - [x] Retrieve account of known people
         - [ ] Retrieve open-source repositories of known peoples
             - [ ] Retrieve organization of known people with open-source repositories
-  - Gitlab
+  - Gitlab instances
     - [x] Retrieve open source repositories
         - [ ] Retrieve the accounts of the creator of open source repositories
   - Zenodo
@@ -35,8 +35,6 @@ Attempt to make the number of git user tend to one per person per website
 
 Phase 4  
   - Github & GitLab
-    - [ ] Retrieve account of known people
-    - [ ] Remove repositories linked to known people
     - [ ] Retrieve repositories linked to known organizations
     - [ ] Retrieve repositories mentioning known organizations
 
