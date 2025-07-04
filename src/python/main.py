@@ -8,6 +8,8 @@ import concurrent.futures
 import signal
 import sys
 
+from semantic_scholar_source.semantic_scholar import process_semantic_scholar
+
 def write_graphs_to_files():
     print('Writing graphs to files...')
     write_hal_graph()
@@ -22,7 +24,7 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 def main():
-    logging.basicConfig(filename='app.log', level=logging.INFO)
+    logging.basicConfig(filename='app.log', level=logging.DEBUG)
     # Loading .env variables
     load_dotenv()
 
@@ -33,10 +35,11 @@ def main():
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = [
-            executor.submit(process_paper_with_code),
-            executor.submit(process_hal),
-            executor.submit(process_github),
-            executor.submit(process_gitlab)
+            # executor.submit(process_paper_with_code),
+            # executor.submit(process_hal),
+            # executor.submit(process_github),
+            executor.submit(process_semantic_scholar)
+            # executor.submit(process_gitlab)
         ]
         for future in concurrent.futures.as_completed(futures):
             print(f'Process completed: {future.result()}')

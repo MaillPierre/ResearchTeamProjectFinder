@@ -39,6 +39,11 @@
     rdfs:comment "An identifier for a GitHub, GitLab, Bitbucket, etc. resource, generally the URL of the repo"@en ;
     rdfs:subClassOf datacite:ResourceIdentifier .
 
+:GitHubIdentifier a rdfs:Class ;
+    rdfs:label "GitHub Organization"@en ;
+    rdfs:comment "A GitHub organization"@en ;
+    rdfs:subClassOf :RepositoryIdentifier .
+
 :ORCID a rdfs:Class ;
     rdfs:label "ORCID"@en ;
     rdfs:comment "An ORCID identifier"@en ;

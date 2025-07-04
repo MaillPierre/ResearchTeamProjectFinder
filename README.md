@@ -5,12 +5,14 @@ The aim of this project is to create a tool able to use the different APIs avail
 ## Plan
 
 Phase 1
-  - HAL
-    - [x] List of people
-    - [x] List of organizations
-    - [x] List of softwares
+- CrossRef
+    - [ ] List of recent papers in given domains
+        - [x] List of people
+        - HAL
+            - [x] List of organizations
+            - [x] List of softwares
 
-  - Papers with code
+- Papers with code
     - [x] List of papers and their codes
 
 Phase 2
@@ -45,6 +47,20 @@ Optional:
     - [ ] Scan papers abstract in search for repositories URLs
   - General
     - [ ] multithreading of independant treatments
+
+## Current statistics
+
+Persons: 112,146
+    Accounts per person: 1.01
+    GitHub accounts: 24,928
+    GitLab accounts:
+    OrCID accounts: 67,831
+    HAL accounts:
+Organization: 1,110
+Repositories: 226,718
+    GitHub repositories:
+    GitLab repositories:
+
 
 ## Data
 
