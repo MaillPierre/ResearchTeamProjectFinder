@@ -21,3 +21,5 @@ src/*/__pycache__/
 .vscode/
 
 *.log
+
+src/researchteamprojectfinder.egg-info/

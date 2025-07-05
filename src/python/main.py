@@ -8,8 +8,6 @@ import concurrent.futures
 import signal
 import sys
 
-from semantic_scholar_source.semantic_scholar import process_semantic_scholar
-
 def write_graphs_to_files():
     print('Writing graphs to files...')
     write_hal_graph()
@@ -38,7 +36,6 @@ def main():
             # executor.submit(process_paper_with_code),
             # executor.submit(process_hal),
             # executor.submit(process_github),
-            executor.submit(process_semantic_scholar)
             # executor.submit(process_gitlab)
         ]
         for future in concurrent.futures.as_completed(futures):
