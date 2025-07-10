@@ -1,3 +1,4 @@
+import uuid
 from rdflib import URIRef, BNode
 import re
 from github import PaginatedList
@@ -46,6 +47,8 @@ local_repository_forks = URIRef(our_ns + 'repositoryForks')
 pav_retrievedFrom = URIRef(pav_ns + 'retrievedFrom')
 pav_importedFrom = URIRef(pav_ns + 'importedFrom')
 pav_lastRefreshedOn = URIRef(pav_ns + 'lastRefreshedOn')
+pav_authoredOn = URIRef(pav_ns + 'authoredOn')
+# roh:platform
 roh_platform = URIRef(roh_ns + 'platform')
 # adms:identifier
 adms_identifier = URIRef(adms_ns + 'identifier')
@@ -71,10 +74,13 @@ def sanitize(s):
 def create_uri(s):
     healthy_uri = sanitize_uri(s)
     if healthy_uri == None:
-        return BNode()
-    return URIRef(sanitize_uri(s))
+        return create_bnode()
+    return URIRef(healthy_uri)
 
-def json_encode_paginated_list(paginated_list: PaginatedList):
+def create_bnode(prefix= ""):
+    return BNode(prefix + str(uuid.uuid4()))
+
+def json_encode_paginated_list(paginated_list: PaginatedList.PaginatedList):
     json_list = []
     try:
         for item in paginated_list:

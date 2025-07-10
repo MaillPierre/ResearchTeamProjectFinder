@@ -23,3 +23,5 @@ src/*/__pycache__/
 *.log
 
 src/researchteamprojectfinder.egg-info/
+
+data/crossref/
