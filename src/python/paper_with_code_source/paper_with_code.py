@@ -1,4 +1,5 @@
-from util.utilities import create_uri, sanitize, sanitize_uri, adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_Source, local_RepositoryId, local_ArXiv, pav_retrievedFrom, bibo_Document, arxiv_ns
+from util.utilities import create_uri, sanitize, sanitize_uri
+from kg.CONSTANTS import adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_Source, local_RepositoryId, local_ArXiv, pav_retrievedFrom, bibo_Document, ARXIV
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS, DCAT, RDF, RDFS
 import json
@@ -42,10 +43,10 @@ def process_paper_with_code():
         if paper_pdf_string != None:
             g_pwc_paper.add((paper_uri, DCAT.downloadURL, Literal(paper_pdf_string)))
         if paper_arxiv_string != None:
-            arxiv_uri = create_uri(arxiv_ns + paper_arxiv_string)
+            arxiv_uri = create_uri(ARXIV + paper_arxiv_string)
             g_pwc_paper.add((arxiv_uri, RDF.type, local_ArXiv))
             g_pwc_paper.add((arxiv_uri, pav_retrievedFrom, paper_with_code))
-            g_pwc_paper.add((paper_uri, adms_identifier, create_uri(arxiv_ns + paper_arxiv_string)))
+            g_pwc_paper.add((paper_uri, adms_identifier, create_uri(ARXIV + paper_arxiv_string)))
         
         # Add the code to the graph
         paper_repo = create_uri(paper['repo_url'])

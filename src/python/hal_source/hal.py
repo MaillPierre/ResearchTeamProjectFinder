@@ -1,8 +1,9 @@
-from rdflib import Graph, URIRef, Literal, BNode
+from rdflib import DCMITYPE, Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
-from rdflib.query import Result
-from util.utilities import create_uri, pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, local_Source, hal_author_ns, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, hal_ns, orcid_ns, dcmitype_Software, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform
+from rdflib.query import Result, ResultRow
+from util.utilities import create_uri
+from kg.CONSTANTS import pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, local_Source, HAL_AUTHOR, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, HAL, ORCID, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform
 import requests
 import json
 import datetime
@@ -61,7 +62,7 @@ def process_hal():
             author_query_literal = Literal(author_api_url)
             for author in author_api_result['response']['docs']:
                 if(idhal_field in author and author[idhal_field] != None):
-                    author_uri = create_uri(hal_author_ns + author[idhal_field])
+                    author_uri = create_uri(HAL_AUTHOR + author[idhal_field])
                     g_h_person.add((author_uri, RDF.type, FOAF.Person))
                     g_h_person.add((author_uri, pav_retrievedFrom, author_query_literal))
                     g_h_person.add((author_uri, pav_retrievedFrom, author_api_uri))
@@ -75,7 +76,7 @@ def process_hal():
                         g_h_person.add((author_uri, DCTERMS.alternative, Literal(author[fullname_sci_field])))
                     if(orcid_field in author and author[orcid_field] != None):
                         for orcid in author[orcid_field]:
-                            orcid_uri = create_uri(orcid_ns + orcid)
+                            orcid_uri = create_uri(ORCID + orcid)
                             g_h_person.add((author_uri, adms_identifier, orcid_uri))
                             g_h_person.add((orcid_uri, RDF.type, local_Orcid))
                             g_h_person.add((orcid_uri, pav_retrievedFrom, author_query_literal))
@@ -179,9 +180,9 @@ def process_hal():
 
             software_query_literal = Literal(software_api_url)
             for software in software_api_result['response']['docs']:
-                software_uri = create_uri(hal_ns + software[halid_field])
+                software_uri = create_uri(HAL + software[halid_field])
                 logging.info(f'Adding software {software_uri}')
-                g_h_software.add((software_uri, RDF.type, dcmitype_Software))
+                g_h_software.add((software_uri, RDF.type, DCMITYPE.Software))
                 g_h_software.add((software_uri, pav_retrievedFrom, software_api_uri))
                 g_h_software.add((software_uri, pav_retrievedFrom, software_query_literal))
                 # Title
@@ -209,7 +210,7 @@ def process_hal():
                 # Author IdHal
                 if(author_idhal_field in software and software[author_idhal_field] != None and len(software[author_idhal_field]) > 0):
                     for idhal in software[author_idhal_field]:
-                        idhal_uri = create_uri(hal_author_ns + idhal)
+                        idhal_uri = create_uri(HAL_AUTHOR + idhal)
                         author_bnode = BNode()
                         g_h_software.add((author_bnode, RDF.type, FOAF.Person))
                         g_h_software.add((author_bnode, adms_identifier, idhal_uri))
@@ -222,7 +223,7 @@ def process_hal():
                 # Author ORCID
                 if(author_orcid_field in software and software[author_orcid_field] != None and len(software[author_orcid_field]) > 0):
                     for orcid in software[author_orcid_field]:
-                        orcid_uri = create_uri(orcid_ns + orcid)
+                        orcid_uri = create_uri(ORCID + orcid)
                         author_bnode = BNode()
                         g_h_software.add((author_bnode, RDF.type, FOAF.Person))
                         g_h_software.add((author_bnode, adms_identifier, orcid_uri))
@@ -394,28 +395,30 @@ def process_hal():
 
         # Send GET request to the HAL API
         for binding in hal_org_results:
-            org_uri = create_uri(str(binding['org']))
-            org_id_uri = create_uri(str(binding['id']))
-            if( (org_uri, RDF.type, local_HalOrganization) not in g_h_organization):
-                g_h_organization.add((org_uri, RDF.type, local_HalOrganization))
-                g_h_organization.add((org_uri, adms_identifier, org_id_uri))
-                g_h_organization.add((org_id_uri, RDF.type, datacite_OrganizationIdentifier))
-                g_h_organization.add((org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
-                g_h_organization.add((org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
-                g_h_organization.add((org_uri, RDFS.label, Literal(binding['label'])))
-                if(binding['acronym'] != None):
-                    g_h_organization.add((org_uri, FOAF.name, Literal(binding['acronym'])))
-                if(binding['superOrg'] != None):
-                    super_org_uri = create_uri(str(binding['superOrg']))
-                    super_org_id_uri = create_uri(str(binding['superOrgId']))
-                    super_org_label = Literal(binding['superOrgLabel'])
-                    g_h_organization.add((org_uri, DCTERMS.relation, super_org_uri))
-                    g_h_organization.add((super_org_uri, RDF.type, local_HalOrganization))
-                    g_h_organization.add((super_org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
-                    g_h_organization.add((super_org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
-                    g_h_organization.add((super_org_uri, adms_identifier, super_org_id_uri))
-                    g_h_organization.add((super_org_id_uri, RDF.type, datacite_OrganizationIdentifier))
-                    g_h_organization.add((super_org_uri, RDFS.label, super_org_label))
+            if isinstance(binding, ResultRow):
+                binding = binding.asdict()
+                org_uri = create_uri(str(binding['org']))
+                org_id_uri = create_uri(str(binding['id']))
+                if( (org_uri, RDF.type, local_HalOrganization) not in g_h_organization):
+                    g_h_organization.add((org_uri, RDF.type, local_HalOrganization))
+                    g_h_organization.add((org_uri, adms_identifier, org_id_uri))
+                    g_h_organization.add((org_id_uri, RDF.type, datacite_OrganizationIdentifier))
+                    g_h_organization.add((org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
+                    g_h_organization.add((org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
+                    g_h_organization.add((org_uri, RDFS.label, Literal(binding['label'])))
+                    if(binding['acronym'] != None):
+                        g_h_organization.add((org_uri, FOAF.name, Literal(binding['acronym'])))
+                    if(binding['superOrg'] != None):
+                        super_org_uri = create_uri(str(binding['superOrg']))
+                        super_org_id_uri = create_uri(str(binding['superOrgId']))
+                        super_org_label = Literal(binding['superOrgLabel'])
+                        g_h_organization.add((org_uri, DCTERMS.relation, super_org_uri))
+                        g_h_organization.add((super_org_uri, RDF.type, local_HalOrganization))
+                        g_h_organization.add((super_org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
+                        g_h_organization.add((super_org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
+                        g_h_organization.add((super_org_uri, adms_identifier, super_org_id_uri))
+                        g_h_organization.add((super_org_id_uri, RDF.type, datacite_OrganizationIdentifier))
+                        g_h_organization.add((super_org_uri, RDFS.label, super_org_label))
         # writing Hal roganisation to file
         logging.info(f'Writing organization graph to file {len(g_h_organization)} triples')
         g_h_organization.serialize(destination=g_h_organization_filename, format='turtle')

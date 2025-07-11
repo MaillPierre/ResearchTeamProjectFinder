@@ -1,7 +1,10 @@
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import RDF, RDFS, DCTERMS
-from util.utilities import create_uri, adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_GitlabUser, local_GitlabRepo, pav_retrievedFrom, pav_importedFrom, pav_lastRefreshedOn, local_repository_stars, local_repository_forks, cc_License
+from util.utilities import create_uri
+from kg.CONSTANTS import adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_GitlabUser, local_GitlabRepo, pav_retrievedFrom, pav_importedFrom, pav_lastRefreshedOn, local_repository_stars, local_repository_forks, cc_License
 import gitlab
+from gitlab.exceptions import GitlabGetError
+
 import os
 import json
 import datetime
@@ -50,7 +53,7 @@ def process_gitlab(gitlab_instance_url = 'https://gitlab.inria.fr', gitlab_insta
         if not os.path.exists(project_query_filepath):
             try:
                 full_project = gl.projects.get(project_id, visibility='public', license=True, star_count=True, forks_count=True, topics=True, last_activity_at=True)
-            except gitlab.exceptions.GitlabGetError as e:
+            except GitlabGetError as e:
                 logging.warning(f'Error querying project {project_query_string}: {e}')
                 continue
             # Save the project details to a file

@@ -1,8 +1,10 @@
 from rdflib import Graph, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, DCTERMS, FOAF
+from rdflib.query import Result, ResultRow
 from github import Github
-from util.utilities import create_uri, json_encode_paginated_list, adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_GithubUser
+from util.utilities import create_uri, json_encode_paginated_list
+from kg.CONSTANTS import adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_GithubUser
 import os
 import json
 import datetime
@@ -11,7 +13,11 @@ import logging
 
 # Limits
 # # Limit the number of results from github when looking for the ids of one person. Above this limit, the results are not added to the graph
-github_user_results_limit = int(os.getenv('github_user_results_limit'))
+if os.getenv('github_user_results_limit') is None:
+    logging.error('No limit set for github results')
+    github_user_results_limit = 100 
+else:
+    github_user_results_limit = int(os.getenv('github_user_results_limit'))
 
 g_gh_Software = Graph()
 g_gh_software_filename = 'data/rdf/software/github_Software.ttl'
@@ -113,19 +119,20 @@ def process_github():
         while True:
             try:
                 row = next(iterator)
-                if(current_person_uri == None):
-                    current_person_uri = row.person
-                    current_person_names.append(row.name)
-                if(current_person_uri != row.person or current_person_uri == None):
-                    if(len(current_person_names) > 0):
-                        # We have a person with at least some known names
-                        # prepare the query to the Github API
-                        search_for_person(current_person_uri, current_person_names)
-                    current_person_uri = row.person
-                    current_person_names = []
-                    current_person_names.append(row.name)
-                else:
-                    current_person_names.append(row.name)
+                if isinstance(row, ResultRow):
+                    if(current_person_uri == None):
+                        current_person_uri = row.person
+                        current_person_names.append(row.name)
+                    if(current_person_uri != row.person or current_person_uri == None):
+                        if(len(current_person_names) > 0):
+                            # We have a person with at least some known names
+                            # prepare the query to the Github API
+                            search_for_person(current_person_uri, current_person_names)
+                        current_person_uri = row.person
+                        current_person_names = []
+                        current_person_names.append(row.name)
+                    else:
+                        current_person_names.append(row.name)
             except StopIteration:
                 if(len(current_person_names) > 0):
                     search_for_person(current_person_uri, current_person_names)

@@ -3,7 +3,9 @@ import logging
 import os
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS, FOAF, XSD, OWL, DCAT, DCTERMS
-from util.utilities import create_uri, create_bnode, pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, pav_authoredOn, local_Source, hal_author_ns, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, hal_ns, orcid_ns, dcmitype_Software, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform, bibo_Document
+from kg.knowledge import Paper, Person
+from util.utilities import create_uri, create_bnode
+from kg.CONSTANTS import pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, pav_authoredOn, local_Source, HAL_AUTHOR, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, HAL, ORCID, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform, bibo_Document, bibo_doi
 import json
 import hashlib
 
@@ -81,49 +83,23 @@ def process_article_to_rdf(article):
     if "DOI" in article:
         doi_string = article["DOI"]
         article_uri = create_uri("http://doi.org/" + doi_string)
-        g_c_papers.add((article_uri, RDF.type, bibo_Document))
-        g_c_papers.add((article_uri, pav_lastRefreshedOn, Literal(datetime.now())))
-        g_c_papers.add((article_uri, pav_retrievedFrom, URIRef(create_uri(cr.base_url))))
+        article_builder = Paper.Builder(article_uri)
+        article_builder.set_doi(doi_string)
+        article_builder.set_created(datetime.now().isoformat())
         titles = article["title"]
         for title in titles:
             title_str = title
-            g_c_papers.add((article_uri, DCTERMS.title, Literal(title_str)))
+            article_builder.set_title(title_str)
         citation_count = article["is-referenced-by-count"]
-        g_c_papers.add((article_uri, DCTERMS.bibliographicCitation, Literal(citation_count)))
-        for author in article['author']:
-            author_uri = create_bnode("author")
-            if "ORCID" in author:
-                orcid_str = author["ORCID"]
-                author_uri = create_uri(orcid_str)
-                g_c_papers.add((author_uri, adms_identifier, author_uri))
-                g_c_papers.add((author_uri, RDF.type, local_Orcid))
-            g_c_papers.add((article_uri, DCTERMS.creator, author_uri))
-            g_c_papers.add((author_uri, RDF.type, FOAF.Person))
-            if "given" in author:
-                given_str = author["given"]
-                g_c_papers.add((author_uri, FOAF.firstName, Literal(given_str)))
-            if "family" in author:
-                family_str = author["family"]
-                g_c_papers.add((author_uri, FOAF.lastName, Literal(family_str)))
-            if "given" in author and "family" in author:
-                given_str = author["given"]
-                family_str = author["family"]
-                g_c_papers.add((author_uri, FOAF.name, Literal(given_str + " " + family_str)))
-            if "affiliation" in author:
-                for affiliation in author["affiliation"]:
-                    affiliation_name_str = affiliation["name"]
-        if "license" in article:
-            licenses = article["license"]
-            for license in licenses:
-                if "URL" in license:
-                    license_url = license["URL"]
+        article_builder.set_citation_count(citation_count)
 
         created_str = crossref_datepart_to_datetime(article["created"]["date-time"])
-        g_c_papers.add((article_uri, pav_authoredOn, Literal(created_str, datatype=XSD.dateTime)))
+        if created_str is not None:
+            article_builder.set_created(created_str.isoformat())
 
         if "abstract" in article:
             abstract_str = article["abstract"]
-            g_c_papers.add((article_uri, DCTERMS.abstract, Literal(abstract_str)))
+            article_builder.set_abstract(abstract_str)
 
         if "funder" in article:
             for funder in article["funder"]:
@@ -141,9 +117,40 @@ def process_article_to_rdf(article):
                 if "intended-application" in link:
                     intended_application = link["intended-application"]
 
-        
-        
-    # authors_full_name = [f'{author["family"]}, {author["given"]}' for author in article['author']]
+        for author in article['author']:
+            author_uri = create_bnode("author")
+            if "ORCID" in author:
+                orcid_str = author["ORCID"]
+                author_uri = create_uri(orcid_str)
+            author_builder = Person.Builder(author_uri)
+            if "ORCID" in author:
+                orcid_str = author["ORCID"]
+                author_builder.set_orcid(orcid_str)
+            if "given" in author:
+                given_str = author["given"]
+                author_builder.set_first_name(given_str)
+            if "family" in author:
+                family_str = author["family"]
+                author_builder.set_last_name(family_str)
+            if "given" in author and "family" in author:
+                given_str = author["given"]
+                family_str = author["family"]
+                author_builder.set_label(given_str + " " + family_str)
+            if "affiliation" in author:
+                for affiliation in author["affiliation"]:
+                    affiliation_name_str = affiliation["name"]
+                    affiliation_uri = create_bnode("affiliation")
+                    g_c_papers.add((author_uri, FOAF.member, affiliation_uri))
+                    g_c_papers.add((affiliation_uri, RDF.type, FOAF.Organization))
+                    g_c_papers.add((affiliation_uri, FOAF.name, Literal(affiliation_name_str)))
+                    author_builder.add_affiliation(affiliation_uri)
+            author_obj = author_builder.build()
+            if author_obj.uri() is not None:
+                article_builder.add_author(author_obj.uri())
+            author_obj.write(g_c_papers)
+
+        article_obj = article_builder.build()
+        article_obj.write(g_c_papers)
 
     logging.info(f"Processing article {doi_string} with title {titles} and citation count {citation_count}")
 
@@ -163,5 +170,5 @@ def write_crossref_graph():
 
 def process_crossref():
     logging.info("Processing Crossref")
-    process_top_articles_by_domains(topics, limit=500, nb_years=5)
+    process_top_articles_by_domains(topics, limit=10, nb_years=5)
     write_crossref_graph()
