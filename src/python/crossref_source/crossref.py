@@ -3,7 +3,7 @@ import logging
 import os
 from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS, FOAF, XSD, OWL, DCAT, DCTERMS
-from kg.knowledge import Paper, Person
+from kg.knowledge import Organization, Paper, Person, Source
 from util.utilities import create_uri, create_bnode
 from kg.CONSTANTS import pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, pav_authoredOn, local_Source, HAL_AUTHOR, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, HAL, ORCID, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform, bibo_Document, bibo_doi
 import json
@@ -17,9 +17,12 @@ data_path="data/crossref/"
 
 g_c_papers = Graph()
 g_c_papers_filename = 'data/rdf/paper/crossref_Papers.ttl'
+uri_c_source: URIRef = URIRef(cr.base_url)
+crossref_source_obj = Source.Builder(uri_c_source).build()
 
 # List of topics of interests
-topics = [ "Data science", "Machine learning", "Artificial intelligence", "Deep learning", "Natural language processing", "Knowledge Graph", "Knowledge Graph Embedding", "Graph embedding", "Knowledge Graph Completion", "Knowledge Graph Construction" , "Data wrangling", "Explicability"]
+topics = [ "Data science"]
+# topics = [ "Data science", "Machine learning", "Artificial intelligence", "Deep learning", "Natural language processing", "Knowledge Graph", "Knowledge Graph Embedding", "Graph embedding", "Knowledge Graph Completion", "Knowledge Graph Construction" , "Data wrangling", "Explicability"]
 
 logging.basicConfig(filename='app.log', level=logging.INFO)
 
@@ -40,7 +43,7 @@ def retrieve_crossref_answer(query: str, start_date: str, end_date: str, limit: 
         crossref_query_file.close()
         return crossref_answer
     else:
-        return dict()
+        return {}
 
 def check_crossref_answer_exists(query: str, start_date: str, end_date: str, limit: int, order="desc"):
     logging.info(f"Checking if Crossref answer exists for query: {query}, start_date: {start_date}, end_date: {end_date}, limit: {limit}, order: {order}")
@@ -83,7 +86,7 @@ def process_article_to_rdf(article):
     if "DOI" in article:
         doi_string = article["DOI"]
         article_uri = create_uri("http://doi.org/" + doi_string)
-        article_builder = Paper.Builder(article_uri)
+        article_builder = Paper.Builder(crossref_source_obj, article_uri)
         article_builder.set_doi(doi_string)
         article_builder.set_created(datetime.now().isoformat())
         titles = article["title"]
@@ -118,44 +121,43 @@ def process_article_to_rdf(article):
                     intended_application = link["intended-application"]
 
         for author in article['author']:
-            author_uri = create_bnode("author")
-            if "ORCID" in author:
-                orcid_str = author["ORCID"]
-                author_uri = create_uri(orcid_str)
-            author_builder = Person.Builder(author_uri)
-            if "ORCID" in author:
-                orcid_str = author["ORCID"]
-                author_builder.set_orcid(orcid_str)
-            if "given" in author:
-                given_str = author["given"]
-                author_builder.set_first_name(given_str)
-            if "family" in author:
-                family_str = author["family"]
-                author_builder.set_last_name(family_str)
-            if "given" in author and "family" in author:
-                given_str = author["given"]
-                family_str = author["family"]
-                author_builder.set_label(given_str + " " + family_str)
-            if "affiliation" in author:
-                for affiliation in author["affiliation"]:
-                    affiliation_name_str = affiliation["name"]
-                    affiliation_uri = create_bnode("affiliation")
-                    g_c_papers.add((author_uri, FOAF.member, affiliation_uri))
-                    g_c_papers.add((affiliation_uri, RDF.type, FOAF.Organization))
-                    g_c_papers.add((affiliation_uri, FOAF.name, Literal(affiliation_name_str)))
-                    author_builder.add_affiliation(affiliation_uri)
-            author_obj = author_builder.build()
-            if author_obj.uri() is not None:
-                article_builder.add_author(author_obj.uri())
-            author_obj.write(g_c_papers)
+            process_author_to_rdf(author, article_builder)
 
         article_obj = article_builder.build()
-        article_obj.write(g_c_papers)
+        article_obj.to_rdf(g_c_papers)
 
     logging.info(f"Processing article {doi_string} with title {titles} and citation count {citation_count}")
 
+def process_author_to_rdf(author, article_builder: Paper.Builder):
+    author_uri = create_bnode("author")
+    if "ORCID" in author:
+        orcid_str = author["ORCID"]
+        author_uri = create_uri(orcid_str)
+    author_builder = Person.Builder(crossref_source_obj, author_uri)
+    if "ORCID" in author:
+        orcid_str = author["ORCID"]
+        author_builder.set_orcid(orcid_str)
+    if "given" in author:
+        given_str = author["given"]
+        author_builder.set_first_name(given_str)
+    if "family" in author:
+        family_str = author["family"]
+        author_builder.set_last_name(family_str)
+    if "given" in author and "family" in author:
+        given_str = author["given"]
+        family_str = author["family"]
+        author_builder.set_label(given_str + " " + family_str)
+    if "affiliation" in author:
+        for affiliation in author["affiliation"]:
+            affiliation_name_str = affiliation["name"]
+            affiliation_obj_builder = Organization.Builder(crossref_source_obj, affiliation_name_str)
+            affiliation_obj = affiliation_obj_builder.build()
+            author_builder.add_affiliation(affiliation_obj)
+    author_obj = author_builder.build()
+    article_builder.add_author(author_obj)
 
-def crossref_datepart_to_datetime(datepart: list[int]):
+
+def crossref_datepart_to_datetime(datepart: list[int]) -> datetime | None:
     if len(datepart) == 3:
         return datetime(datepart[0], datepart[1], datepart[2])
     if len(datepart) == 2:
