@@ -1,5 +1,6 @@
 from dotenv import load_dotenv
-from  hal_source.hal import process_hal, write_hal_graph
+from dblp_source.dblp import dblp_test
+from hal_source.hal import process_hal, write_hal_graph
 from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
 from paper_with_code_source.paper_with_code import process_paper_with_code, write_paper_with_code_graph
@@ -39,7 +40,8 @@ def main():
             # executor.submit(process_hal),
             # executor.submit(process_github),
             # executor.submit(process_gitlab)
-            executor.submit(process_crossref)
+            # executor.submit(process_crossref)
+            executor.submit(dblp_test)
         ]
         for future in concurrent.futures.as_completed(futures):
             print(f'Process completed: {future.result()}')

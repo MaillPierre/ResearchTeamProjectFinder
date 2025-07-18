@@ -1,38 +1,47 @@
-from rdflib import DCMITYPE, DCTERMS, FOAF, OWL, RDF, RDFS, XSD, Graph, Literal, URIRef, BNode
+from rdflib import DCAT, DCMITYPE, DCTERMS, DOAP, FOAF, OWL, RDF, RDFS, XSD, Graph, Literal, URIRef, BNode
 from datetime import datetime
 
-from kg.CONSTANTS import ADMS, BIBO, DATACITE, LOCAL, PAV
+from kg.CONSTANTS import ADMS, BIBO, DATACITE, LOCAL, OO, PAV, ROH
 from util.utilities import create_uri
 
-class RDF_Resource:
+class RDFResource:
     
     class Builder:
         def __init__(self, uri: URIRef | BNode):
             self.uri = uri
+            self.comments: set[Literal] = set()
+
+        def add_comment(self, comment: str):
+            self.comments.add(Literal(comment))
+            return self
 
         def build(self):
-            return RDF_Resource(self)
+            return RDFResource(self)
         
     def __init__(self, builder: Builder):
         self.builder = builder
     
     def uri(self):
         return self.builder.uri
+    
+    def comments(self):
+        return self.builder.comments
 
     def to_rdf(self, graph : Graph):
-        pass
+        for comment in self.comments():
+            graph.add((self.uri(), RDFS.comment, comment))
 
     def __hash__(self):
         return hash(self.uri())
     
     def __eq__(self, other):
-        if not isinstance(other, RDF_Resource):
+        if not isinstance(other, RDFResource):
             return False
         return self.uri() == other.uri()
 
 
-class Source (RDF_Resource):
-    class Builder(RDF_Resource.Builder):
+class Source (RDFResource):
+    class Builder(RDFResource.Builder):
         def __init__(self, source_uri : URIRef):
             super().__init__(source_uri)
             self.importedFrom : Literal = Literal(str(source_uri))
@@ -67,18 +76,20 @@ class Source (RDF_Resource):
         return self.builder.retrievedOn
     
     def to_rdf(self, graph: Graph):
+        super().to_rdf(graph)
         graph.add((self.uri(), PAV.importedFrom, self.importedFrom()))
-        graph.add((self.uri(), PAV.lastRefreshedOn, Literal(self.lastRefreshedOn(), datatype=XSD.dateTime)))
-        graph.add((self.uri(), PAV.retrievedOn, Literal(self.retrievedOn(), datatype=XSD.dateTime)))
+        graph.add((self.uri(), PAV.lastRefreshedOn, Literal(self.lastRefreshedOn().isoformat(), datatype=XSD.dateTime)))
+        graph.add((self.uri(), PAV.retrievedOn, Literal(self.retrievedOn().isoformat(), datatype=XSD.dateTime)))
         super().to_rdf(graph)
 
-class Thing(RDF_Resource):
-    class Builder(RDF_Resource.Builder):
+class Thing(RDFResource):
+    class Builder(RDFResource.Builder):
         def __init__(self, source : Source, uri : URIRef | BNode):
             super().__init__(uri)
             self.label : str = str(uri)
             self.source : Source = source
             self.retrieved_from : Literal | None = None
+            self.related : list[RDFResource] = []
         
         def set_uri(self, uri : URIRef):
             self.uri = uri
@@ -96,6 +107,13 @@ class Thing(RDF_Resource):
             self.retrieved_from = retrieved_from
             return self
         
+        def add_related(self, related : RDFResource):
+            self.related.append(related)
+            return self
+        
+        def build(self):
+            return Thing(self)
+        
     def __init__(self, builder : Builder):
         self.builder = builder
         
@@ -108,13 +126,20 @@ class Thing(RDF_Resource):
     def retrieved_from(self) -> Literal | None:
         return self.builder.retrieved_from
     
+    def related(self):
+        return self.builder.related
+    
     def to_rdf(self, graph : Graph):
+        super().to_rdf(graph)
         if self.label() is not None:
             graph.add((self.uri(), RDFS.label, Literal(self.label())))
-            graph.add((self.uri(), PAV.retrievedFrom, self.source().uri()))
-            if self.retrieved_from() is not None:
-                graph.add((self.uri(), PAV.retrievedFrom, self.retrieved_from())) # type: ignore
-            self.source().to_rdf(graph)
+        graph.add((self.uri(), PAV.retrievedFrom, self.source().uri()))
+        if self.retrieved_from() is not None:
+            graph.add((self.uri(), PAV.retrievedFrom, self.retrieved_from())) # type: ignore
+        self.source().to_rdf(graph)
+        for related in self.related():
+            graph.add((self.uri(), DCTERMS.relation, related.uri()))
+            related.to_rdf(graph)
 
     def __eq__(self, other):
         if not isinstance(other, Thing):
@@ -160,9 +185,8 @@ class Resource (Thing):
             self.created : str | None = None
             self.modified : str | None = None
             self.version : str | None = None
-            self.related : list[URIRef | BNode] = []
-            self.identifiers : set[Identifier] = set()
             self.referenced_by : set[Resource] = set()
+            self.identifiers : set[Identifier] = set()
 
         def build(self):
             return Resource(self)
@@ -191,16 +215,12 @@ class Resource (Thing):
             self.version = version
             return self
         
-        def add_related(self, related : URIRef | BNode):
-            self.related.append(related)
+        def add_referenced_by(self, referenced_by):
+            self.referenced_by.add(referenced_by)
             return self
         
         def add_identifier(self, identifier : Identifier):
             self.identifiers.add(identifier)
-            return self
-        
-        def add_referenced_by(self, referenced_by):
-            self.referenced_by.add(referenced_by)
             return self
         
     def __init__(self, builder : Builder):
@@ -225,9 +245,6 @@ class Resource (Thing):
     def version(self):
         return self.builder.version
     
-    def related(self):
-        return self.builder.related
-    
     def identifiers(self):
         return self.builder.identifiers
     
@@ -248,8 +265,6 @@ class Resource (Thing):
             graph.add((self.uri(), DCTERMS.modified, Literal(self.modified())))
         if self.version() is not None:
             graph.add((self.uri(), OWL.versionInfo, Literal(self.version())))
-        for related in self.related():
-            graph.add((self.uri(), DCTERMS.relation, related))
         for identifier in self.identifiers():
             graph.add((self.uri(), ADMS.identifier, identifier.uri()))
         for referenced_by in self.referenced_by():
@@ -274,9 +289,33 @@ class Repository (Resource):
         super().to_rdf(graph)
         graph.add((self.uri(), RDF.type, DCMITYPE.Software))
 
-class Organization (Thing):
-
+class Agent(Thing):
     class Builder(Thing.Builder):
+        def __init__(self, source: Source, uri: URIRef | BNode):
+            super().__init__(source, uri)
+            self.locations: set[URIRef| Literal] = set()
+
+        def add_location(self, location: URIRef | Literal):
+            self.locations.add(location)
+            return self
+
+        def build(self):
+            return Agent(self)
+    def __init__(self, builder: Builder):
+        super().__init__(builder)
+        self.builder = builder
+
+    def locations(self):
+        return self.builder.locations
+    
+    def to_rdf(self, graph: Graph):
+        super().to_rdf(graph)
+        for location in self.locations():
+            graph.add((self.uri(), DCTERMS.coverage, location))
+
+class Organization (Agent):
+
+    class Builder(Agent.Builder):
         def __init__(self, source: Source, label: str):
             super().__init__(source, create_uri(label))
             self.set_label(label)
@@ -287,8 +326,8 @@ class Organization (Thing):
             self.alternatives.add(alternative)
             return self
         
-        def set_identifier(self, identifier: URIRef | BNode):
-            self.identifier = identifier
+        def add_identifier(self, identifier: Identifier):
+            self.identifiers.add(identifier)
             return self
         
         def build(self):
@@ -303,9 +342,15 @@ class Organization (Thing):
         if not isinstance(value, Organization):
             return False
         return super().__eq__(value)
+    
+    def __hash__(self):
+        return super().__hash__()
 
     def alternatives(self):
         return self.builder.alternatives
+    
+    def identifiers(self):
+        return self.builder.identifiers
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
@@ -313,21 +358,22 @@ class Organization (Thing):
         graph.add((self.uri(), RDFS.label, Literal(self.label())))
         for alternative in self.alternatives():
             graph.add((self.uri(), DCTERMS.alternative, Literal(alternative)))
-        for identifier in self.builder.identifiers:
+        for identifier in self.identifiers():
             graph.add((self.uri(), ADMS.identifier, identifier.uri()))
             identifier.to_rdf(graph)
 
-class Person (Thing):
+class Person (Agent):
 
-    class Builder (Thing.Builder):
+    class Builder (Agent.Builder):
         def __init__(self, source : Source, uri : URIRef | BNode):
             super().__init__(source, uri)
             self.first_name : str | None = None
             self.last_name : str | None = None
-            self.alternatives : list[str] = []
+            self.alternatives : set[str] = set()
             self.orcid : str | URIRef | None = None
-            self.affiliations : list[Organization] = []
-            self.identifiers : list[Identifier]  = []
+            self.affiliations : set[Organization] = set()
+            self.identifiers : set[Identifier]  = set()
+            self.contacts: set[Literal | URIRef] = set()
 
         def set_first_name(self, first_name : str):
             self.first_name = first_name
@@ -338,7 +384,7 @@ class Person (Thing):
             return self
         
         def add_alternative(self, alternative : str):
-            self.alternatives.append(alternative)
+            self.alternatives.add(alternative)
             return self
         
         def set_orcid(self, orcid : str | URIRef):
@@ -346,15 +392,19 @@ class Person (Thing):
             return self
         
         def add_affiliation(self, affiliation : Organization):
-            self.affiliations.append(affiliation)
+            self.affiliations.add(affiliation)
             return self
         
         def add_identifier(self, identifier : Identifier):
-            self.identifiers.append(identifier)
+            self.identifiers.add(identifier)
             return self
         
         def set_uri(self, uri : URIRef):
             self.uri = uri
+            return self
+        
+        def add_contact(self, contact : Literal | URIRef):
+            self.contacts.add(contact)
             return self
         
         def build(self):
@@ -370,20 +420,20 @@ class Person (Thing):
     def last_name(self) -> str | None:
         return self.builder.last_name
     
-    def alternatives(self) -> list[str]:
+    def alternatives(self) -> set[str]:
         return self.builder.alternatives
     
     def orcid(self) -> URIRef | str | None:
         return self.builder.orcid
     
-    def affiliations(self) -> list[Organization]:
+    def affiliations(self) -> set[Organization]:
         return self.builder.affiliations
     
-    def identifiers(self) -> list[Identifier]:
+    def identifiers(self) -> set[Identifier]:
         return self.builder.identifiers
     
-    def source(self) -> Source | None:
-        return self.builder.source
+    def contacts(self) -> set[Literal | URIRef]:
+        return self.builder.contacts
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
@@ -403,9 +453,10 @@ class Person (Thing):
         for identifier in self.identifiers():
             graph.add((self.uri(), ADMS.identifier, identifier.uri()))
             identifier.to_rdf(graph)
+        for contact in self.contacts():
+            graph.add((self.uri(), OO.contact, contact))
         
-
-# Class to store a paper
+        
 class Paper (Resource):
 
     class Builder (Resource.Builder):
@@ -417,9 +468,10 @@ class Paper (Resource):
             self.venue : URIRef | BNode | None = None
             self.doi : URIRef | None = None
             self.identifiers : set[Identifier] = set()
-            self.related_works : list[Paper] = []
+            self.related_works : set[Paper] = set()
             self.citation_count : int = 0
-            self.repositories : list[URIRef] = []
+            self.repositories : set[URIRef] = set()
+            self.download_url : set[Literal] = set()
 
         def build(self):
             return Paper(self)
@@ -457,7 +509,7 @@ class Paper (Resource):
             return self
         
         def add_related_work(self, related_work):
-            self.related_works.append(related_work)
+            self.related_works.add(related_work)
             return self
         
         def set_citation_count(self, citation_count : int):
@@ -465,7 +517,11 @@ class Paper (Resource):
             return self
         
         def add_repository(self, repository : URIRef):
-            self.repositories.append(repository)
+            self.repositories.add(repository)
+            return self
+        
+        def add_download_url(self, download_url : str):
+            self.download_url.add(Literal(download_url))
             return self
         
     def __init__(self, builder : Builder):
@@ -496,8 +552,11 @@ class Paper (Resource):
     def citation_count(self) -> int :
         return self.builder.citation_count
     
-    def repositories(self) -> list[URIRef]:
+    def repositories(self) -> set[URIRef]:
         return self.builder.repositories
+    
+    def download_url(self) -> set[Literal]:
+        return self.builder.download_url
     
     
     def __eq__(self, other):
@@ -523,10 +582,107 @@ class Paper (Resource):
         if self.doi() is not None:
             graph.add((self.uri(), DCTERMS.identifier, Literal(self.doi())))
             graph.add((self.uri(), BIBO.doi, Literal(self.doi())))
-        
+        for download_url in self.download_url():
+            graph.add((self.uri(), DCAT.downloadURL, download_url))
         for related_work in self.related_works():
             graph.add((self.uri(), DCTERMS.relation, related_work.uri()))
             related_work.to_rdf(graph)
 
     def __str__(self):
         return f"{super().__str__()} Paper({self.title()}, {self.authors()}, {self.publication_date()}, {self.venue()}, {self.doi()})"
+    
+
+class Software(Resource):
+    class Builder(Resource.Builder):
+        def __init__(self, source: Source, uri: URIRef | BNode):
+            super().__init__(source, uri)
+            self.creators: set[Agent] = set()
+            self.language: set[Literal] = set()
+            self.platform: set[Literal] = set()
+            self.repository: set[Literal] = set()
+            self.available_at: set[Literal] = set()
+            self.publication: Literal | None = None
+            self.rights: Literal | None = None
+
+        def add_creator(self, creator: Agent):
+            self.creators.add(creator)
+            return self
+        
+        def add_language(self, language: str):
+            self.language.add(Literal(language))
+            return self
+        
+        def add_platform(self, platform: str):
+            self.platform.add(Literal(platform))
+            return self
+        
+        def add_repository(self, repository: str):
+            self.repository.add(Literal(repository))
+            return self
+        
+        def add_available_at(self, available_at: str):
+            self.available_at.add(Literal(available_at))
+            return self
+        
+        def set_publication(self, publication: str):
+            self.publication = Literal(publication)
+            return self
+        
+        def set_rights(self, rights: str):
+            self.rights = Literal(rights)
+            return self
+        
+        def build(self):
+            return Software(self)
+    def __init__(self, builder: Builder):
+        super().__init__(builder)
+        self.builder = builder
+
+
+    def creators(self) -> set[Agent]:
+        return self.builder.creators
+    
+    def language(self) -> set[Literal]:
+        return self.builder.language
+    
+    def platform(self) -> set[Literal]:
+        return self.builder.platform
+    
+    def repository(self) -> set[Literal]:
+        return self.builder.repository
+    
+    def available_at(self) -> set[Literal]:
+        return self.builder.available_at
+    
+    def publication(self) -> Literal | None:
+        return self.builder.publication
+    
+    def rights(self) -> Literal | None:
+        return self.builder.rights
+
+    def to_rdf(self, graph: Graph):
+        super().to_rdf(graph)
+        for creator in self.creators():
+            graph.add((self.uri(), DCTERMS.creator, creator.uri()))
+            creator.to_rdf(graph)
+        for language in self.language():
+            graph.add((self.uri(), DCTERMS.language, language))
+        for platform in self.platform():
+            graph.add((self.uri(), DCTERMS.source, platform))
+        for repository in self.repository():
+            graph.add((self.uri(), DOAP.repository, repository))
+        for available_at in self.available_at():
+            graph.add((self.uri(), DCTERMS.available, available_at))
+        if self.publication() is not None:
+            graph.add((self.uri(), DCTERMS.issued, self.publication())) # type: ignore
+        if self.rights() is not None:
+            graph.add((self.uri(), DCTERMS.rights, self.rights())) # type: ignore
+
+    def __str__(self):
+        return f"{super().__str__()} Software({self.creators()})"
+    
+    def __eq__(self, other):
+        return super().__eq__(other) and self.creators() == other.creators()
+    
+    def __hash__(self):
+        return hash((super().__hash__(), tuple(self.creators())))

@@ -1,7 +1,6 @@
 from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import RDF, RDFS, DCTERMS
 from util.utilities import create_uri
-from kg.CONSTANTS import adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_GitlabUser, local_GitlabRepo, pav_retrievedFrom, pav_importedFrom, pav_lastRefreshedOn, local_repository_stars, local_repository_forks, cc_License
 import gitlab
 from gitlab.exceptions import GitlabGetError
 

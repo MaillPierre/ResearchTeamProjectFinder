@@ -4,18 +4,36 @@ The aim of this project is to create a tool able to use the different APIs avail
 
 ## Plan
 
-Phase 1
+### General
+
+- Get the list of most cited papers per year
+  - Restricted to domains of interest for P16
+- Get the list of people who have published these papers
+  - Check if they are known people from France or the EU
+- Check if there are open-source projects related to the paper done by known people
+
+### Detail
+
+#### Get the list of most cited papers per year
 - CrossRef
-    - [ ] List of recent papers in given domains
-        - [x] List of people
-        - HAL
-            - [x] List of organizations
-            - [x] List of softwares
+    - [ ] List of most-cited recent papers 
+      - [ ] in given domains
+- DBLP
+  - [x] List of most cited papers per year
 
-- Papers with code
-    - [x] List of papers and their codes
+#### Get the list of people who have published these papers and check if they are known people from France or the EU
+  - get the authors and their organizations
+    - CrossRef
+      - [ ] List of authors and organizations
+    - DBLP
+      - [x] List of authors and organizations
+  - Check if they are known people from France or the EU
+    - HAL
+      - [x] List of authors
+      - [x] List of organizations
+      - [x] List of softwares
 
-Phase 2
+#### Check if there are open-source projects related to the paper done by known people
   - Github
     - [x] Retrieve account of known people
         - [ ] Retrieve open-source repositories of known peoples
@@ -23,9 +41,8 @@ Phase 2
   - Gitlab instances
     - [x] Retrieve open source repositories
         - [ ] Retrieve the accounts of the creator of open source repositories
-  - Zenodo
 
-Phase 3
+#### Consolidate the data
   - Consolidation
     - [ ] Removal of BNodes representing people if they can be merged into a known person
     - [ ] Removal of Github and Gitlab users that can be discarded because:
@@ -33,18 +50,18 @@ Phase 3
       - they are not linked to any open source repository
       - they are not linked to any known person
       - they are not linked to any known organization
-Attempt to make the number of git user tend to one per person per website
+    Attempt to make the number of git user tend to one per person per website
 
-Phase 4  
+
+Optional:
   - Github & GitLab
     - [ ] Retrieve repositories linked to known organizations
     - [ ] Retrieve repositories mentioning known organizations
-
-Optional:
   - HAL
     - [ ] Scan papers abstract in search for repositories URLs
   - CrossRef
     - [ ] Scan papers abstract in search for repositories URLs
+  - paper with code
   - General
     - [ ] multithreading of independant treatments
 

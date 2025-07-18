@@ -2,8 +2,9 @@ from rdflib import DCMITYPE, Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
 from rdflib.query import Result, ResultRow
+from kg.knowledge import Identifier, Organization, Person, Software, Source
 from util.utilities import create_uri
-from kg.CONSTANTS import pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, local_Source, HAL_AUTHOR, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, HAL, ORCID, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform
+from kg.CONSTANTS import HAL_AUTHOR, HAL, ORCID
 import requests
 import json
 import datetime
@@ -45,7 +46,8 @@ def process_hal():
         author_api_sort = f"{fullname_field}+asc"
         author_api_endpoint = "http://api.archives-ouvertes.fr/ref/author/?wt=json"
         author_api_url = f'{author_api_endpoint}&fl={author_api_fields}&rows={page_size}&start={page * page_size}&sort={author_api_sort}&fq={author_api_filter}&q={author_api_query}'
-        author_api_uri = create_uri("http://api.archives-ouvertes.fr/ref/author/")
+        author_api_uri = URIRef("http://api.archives-ouvertes.fr/ref/author/")
+        hal_author_api_source_obj = Source.Builder(author_api_uri).build()
         
         # Send GET request to the HAL API
         author_api_response = requests.get(author_api_url)
@@ -53,8 +55,6 @@ def process_hal():
         num_authors = author_api_result['response']['numFound']
 
         # Add the source to the graph
-        g_h_person.add((author_api_uri, RDF.type, local_Source))
-        g_h_person.add((author_api_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
         logging.info(f'Processing {num_authors} authors')
         while page * page_size < num_authors:
             logging.info(f'Processing authors {page * page_size} to {min((page + 1) * page_size, num_authors)} of {num_authors}')
@@ -62,43 +62,41 @@ def process_hal():
             author_query_literal = Literal(author_api_url)
             for author in author_api_result['response']['docs']:
                 if(idhal_field in author and author[idhal_field] != None):
+                    
                     author_uri = create_uri(HAL_AUTHOR + author[idhal_field])
-                    g_h_person.add((author_uri, RDF.type, FOAF.Person))
-                    g_h_person.add((author_uri, pav_retrievedFrom, author_query_literal))
-                    g_h_person.add((author_uri, pav_retrievedFrom, author_api_uri))
+                    author_obj_builder = Person.Builder(hal_author_api_source_obj, author_uri)
+                    author_obj_builder.set_retrieved_from(author_query_literal)
                     if(fullname_field in author and author[fullname_field] != None):
-                        g_h_person.add((author_uri, FOAF.name, Literal(author[fullname_field])))
+                        author_obj_builder.set_label(author[fullname_field])
                     if(firstname_field in author and author[firstname_field] != None):
-                        g_h_person.add((author_uri, FOAF.firstName, Literal(author[firstname_field])))
+                        author_obj_builder.set_first_name(author[firstname_field])
                     if(lastname_field in author and author[lastname_field] != None):
-                        g_h_person.add((author_uri, FOAF.lastName, Literal(author[lastname_field])))
+                        author_obj_builder.set_last_name(author[lastname_field])
                     if(fullname_sci_field in author and author[fullname_sci_field] != None):
-                        g_h_person.add((author_uri, DCTERMS.alternative, Literal(author[fullname_sci_field])))
+                        author_obj_builder.add_alternative(author[fullname_sci_field])
                     if(orcid_field in author and author[orcid_field] != None):
                         for orcid in author[orcid_field]:
                             orcid_uri = create_uri(ORCID + orcid)
-                            g_h_person.add((author_uri, adms_identifier, orcid_uri))
-                            g_h_person.add((orcid_uri, RDF.type, local_Orcid))
-                            g_h_person.add((orcid_uri, pav_retrievedFrom, author_query_literal))
-                            g_h_person.add((orcid_uri, pav_retrievedFrom, author_api_uri))
+                            orcid_id_builder = Identifier.Builder(hal_author_api_source_obj, orcid_uri)
+                            orcid_id_builder.set_retrieved_from(author_query_literal)
+                            author_obj_builder.add_identifier(orcid_id_builder.build())
                     if(gscholar_field in author and author[gscholar_field] != None):
                         for gscholar in author[gscholar_field]:
                             gscholar_uri = create_uri(gscholar)
-                            g_h_person.add((author_uri, adms_identifier, gscholar_uri))
-                            g_h_person.add((gscholar_uri, RDF.type, local_GScholar))
-                            g_h_person.add((gscholar_uri, pav_retrievedFrom, author_query_literal))
-                            g_h_person.add((gscholar_uri, pav_retrievedFrom, author_api_uri))
+                            gscholar_id_builder = Identifier.Builder(hal_author_api_source_obj, gscholar_uri)
+                            gscholar_id_builder.set_retrieved_from(author_query_literal)
+                            author_obj_builder.add_identifier(gscholar_id_builder.build())
                     if(idref_field in author and author[idref_field] != None):
                         for idref in author[idref_field]:
                             idref_uri = create_uri(idref)
-                            g_h_person.add((author_uri, adms_identifier, idref_uri))
-                            g_h_person.add((idref_uri, RDF.type, local_IdRef))
-                            g_h_person.add((idref_uri, pav_retrievedFrom, author_query_literal))
-                            g_h_person.add((idref_uri, pav_retrievedFrom, author_api_uri))
+                            idref_id_builder = Identifier.Builder(hal_author_api_source_obj, idref_uri)
+                            idref_id_builder.set_retrieved_from(author_query_literal)
+                            author_obj_builder.add_identifier(idref_id_builder.build())
+                    author_obj = author_obj_builder.build()
+                    author_obj.to_rdf(g_h_person)
                     logging.info(f'Added author {author_uri}')
             page += 1
 
-            g_h_person.add((author_api_uri, pav_importedFrom, Literal(author_api_url)))
             author_api_url = f'{author_api_endpoint}&fl={author_api_fields}&rows={page_size}&start={page * page_size}&sort={author_api_sort}&fq={author_api_filter}&q={author_api_query}'
 
             ## Check if the result of the next query is in the cache
@@ -151,7 +149,8 @@ def process_hal():
         software_api_sort = f"{docid_field}+asc"
         software_api_url = f"https://api.archives-ouvertes.fr/search/?wt=json&q={software_api_query}&fq={software_api_filter}&fl={software_api_fields}&rows={page_size}&start={page * page_size}&sort={software_api_sort}"
 
-        software_api_uri = create_uri("https://api.archives-ouvertes.fr/search/?fq=docType_s:SOFTWARE")
+        software_api_uri = URIRef("https://api.archives-ouvertes.fr/search/?fq=docType_s:SOFTWARE")
+        software_api_source_obj = Source.Builder(software_api_uri).build()
 
         # Send GET request to the HAL API
         software_api_response = requests.get(software_api_url)
@@ -159,8 +158,6 @@ def process_hal():
         num_softwares = software_api_result['response']['numFound']
 
         # Add the source to the graph
-        g_h_software.add((software_api_uri, RDF.type, local_Source))
-        g_h_software.add((software_api_uri, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
         logging.info(f'Processing {num_softwares} softwares')
         while page * page_size < num_softwares:
             software_api_url = f"https://api.archives-ouvertes.fr/search/?wt=json&fq={software_api_filter}&fl={software_api_fields}&rows={page_size}&start={page * page_size}&sort={software_api_sort}&q={software_api_query}"
@@ -181,163 +178,133 @@ def process_hal():
             software_query_literal = Literal(software_api_url)
             for software in software_api_result['response']['docs']:
                 software_uri = create_uri(HAL + software[halid_field])
+                software_obj_builder = Software.Builder(software_api_source_obj, software_uri)
                 logging.info(f'Adding software {software_uri}')
-                g_h_software.add((software_uri, RDF.type, DCMITYPE.Software))
-                g_h_software.add((software_uri, pav_retrievedFrom, software_api_uri))
-                g_h_software.add((software_uri, pav_retrievedFrom, software_query_literal))
+                software_obj_builder.set_retrieved_from(Literal(software_api_url))
                 # Title
                 if(title_field in software and software[title_field] != None and len(software[title_field]) > 0):
                     for title in software[title_field]:
-                        g_h_software.add((software_uri, DCTERMS.title, Literal(title)))
+                        software_obj_builder.set_label(title)
                 # Abstract
                 if(abstract_field in software and software[abstract_field] != None and len(software[abstract_field]) > 0):
                     for abstract in software[abstract_field]:
-                        g_h_software.add((software_uri, DCTERMS.abstract, Literal(abstract)))
+                        software_obj_builder.set_abstract(abstract)
                 # Keywords
                 if(keyword_field in software and software[keyword_field] != None and len(software[keyword_field]) > 0):
                     for keyword in software[keyword_field]:
-                        g_h_software.add((software_uri, DCTERMS.subject, Literal(keyword)))
+                        software_obj_builder.add_keyword(keyword)
                 # Author Fullname
                 if(author_fullname_field in software and software[author_fullname_field] != None and len(software[author_fullname_field]) > 0):
                     for fullname in software[author_fullname_field]:
                         fullname_literal = Literal(fullname)
                         author_bnode = BNode()
-                        g_h_software.add((author_bnode, RDF.type, FOAF.Person))
-                        g_h_software.add((author_bnode, FOAF.name, fullname_literal))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.creator, author_bnode))
+                        author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
+                        author_obj_builder.set_label(fullname_literal)
+                        author_obj_builder.set_retrieved_from(software_query_literal)
+                        software_obj_builder.add_creator(author_obj_builder.build())
                 # Author IdHal
                 if(author_idhal_field in software and software[author_idhal_field] != None and len(software[author_idhal_field]) > 0):
                     for idhal in software[author_idhal_field]:
                         idhal_uri = create_uri(HAL_AUTHOR + idhal)
                         author_bnode = BNode()
-                        g_h_software.add((author_bnode, RDF.type, FOAF.Person))
-                        g_h_software.add((author_bnode, adms_identifier, idhal_uri))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_person.add((idhal_uri, RDF.type, local_IdHal))
-                        g_h_person.add((idhal_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_person.add((idhal_uri, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.creator, author_bnode))
+                        author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
+                        idhal_obj_builder = Identifier.Builder(software_api_source_obj, idhal_uri)
+                        idhal_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.add_identifier(idhal_obj_builder.build())
+                        software_obj_builder.add_creator(author_obj_builder.build())
                 # Author ORCID
                 if(author_orcid_field in software and software[author_orcid_field] != None and len(software[author_orcid_field]) > 0):
                     for orcid in software[author_orcid_field]:
                         orcid_uri = create_uri(ORCID + orcid)
                         author_bnode = BNode()
-                        g_h_software.add((author_bnode, RDF.type, FOAF.Person))
-                        g_h_software.add((author_bnode, adms_identifier, orcid_uri))
-                        g_h_person.add((orcid_uri, RDF.type, local_Orcid))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_person.add((orcid_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_person.add((orcid_uri, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.creator, author_bnode))
+                        author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
+                        orcid_obj_builder = Identifier.Builder(software_api_source_obj, orcid_uri)
+                        orcid_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.add_identifier(orcid_obj_builder.build())
+                        software_obj_builder.add_creator(author_obj_builder.build())
                 # Author Google Scholar
                 if(author_gscholar_field in software and software[author_gscholar_field] != None and len(software[author_gscholar_field]) > 0):
                     for gscholar in software[author_gscholar_field]:
                         gscholar_uri = create_uri( gscholar)
                         author_bnode = BNode()
-                        g_h_software.add((author_bnode, RDF.type, FOAF.Person))
-                        g_h_software.add((author_bnode, adms_identifier, gscholar_uri))
-                        g_h_person.add((gscholar_uri, RDF.type, local_GScholar))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((author_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_person.add((gscholar_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_person.add((gscholar_uri, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.creator, author_bnode))
+                        author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
+                        gscholar_obj_builder = Identifier.Builder(software_api_source_obj, gscholar_uri)
+                        gscholar_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.set_retrieved_from(software_query_literal)
+                        author_obj_builder.add_identifier(gscholar_obj_builder.build())
+                        software_obj_builder.add_creator(author_obj_builder.build())
                 # Code repository
                 if(code_repo_field in software and software[code_repo_field] != None and len(software[code_repo_field]) > 0):
                     for repo in software[code_repo_field]:
-                        repo_uri = create_uri(repo)
-                        g_h_software.add((repo_uri, RDF.type, local_RepositoryId))
-                        g_h_software.add((repo_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((repo_uri, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.source, repo_uri))
+                        software_obj_builder.add_repository(repo)
                 # Programming language
                 if(programming_language_field in software and software[programming_language_field] != None and len(software[programming_language_field]) > 0):
                     for language in software[programming_language_field]:
-                        g_h_software.add((software_uri, DCTERMS.language, Literal(language)))
+                        software_obj_builder.add_language(language)
                 # Platform
                 if(platform_field in software and software[platform_field] != None and len(software[platform_field]) > 0):
                     for platform in software[platform_field]:
-                        g_h_software.add((software_uri, roh_platform, Literal(platform)))
+                        software_obj_builder.add_platform(platform)
                 # Modified date
                 if(modified_date_field in software and software[modified_date_field] != None):
-                    g_h_software.add((software_uri, DCTERMS.modified, Literal(software[modified_date_field])))
+                    software_obj_builder.set_modified(software[modified_date_field])
                 # Released date
                 if(released_date_field in software and software[released_date_field] != None and len(software[released_date_field]) > 0):
-                    g_h_software.add((software_uri, DCTERMS.available, Literal(software[released_date_field])))
+                    software_obj_builder.add_available_at(software[released_date_field])
                 # Publication date
                 if(publication_date_field in software and software[publication_date_field] != None and len(software[publication_date_field]) > 0):
-                    g_h_software.add((software_uri, DCTERMS.issued, Literal(software[publication_date_field])))
+                    software_obj_builder.set_publication(software[publication_date_field])
                 # Structure ROR
                 if(struct_ror_field in software and software[struct_ror_field] != None and len(software[struct_ror_field]) > 0):
                     for ror in software[struct_ror_field]:
                         ror_uri = create_uri(ror)
                         org_bnode = BNode()
-                        g_h_software.add((org_bnode, RDF.type, FOAF.Organization))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.publisher, org_bnode))
-                        g_h_software.add((org_bnode, adms_identifier, ror_uri))
-                        g_h_organization.add((ror_uri, RDF.type, datacite_OrganizationIdentifier))
-                        g_h_organization.add((ror_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_organization.add((ror_uri, pav_retrievedFrom, software_api_uri))
+                        org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
+                        org_ror_id_obj_builder = Identifier.Builder(software_api_source_obj, ror_uri)
+                        org_ror_id_obj_builder.set_retrieved_from(software_query_literal)
+                        org_obj_builder.set_retrieved_from(software_query_literal)
+                        org_obj_builder.add_identifier(org_ror_id_obj_builder.build())
+                        software_obj_builder.add_creator(org_obj_builder.build())
                 # Structure IdRef
                 if(struct_idref_field in software and software[struct_idref_field] != None and len(software[struct_idref_field]) > 0):
                     for idref in software[struct_idref_field]:
                         idref_uri = create_uri(idref)
                         org_bnode = BNode()
-                        g_h_software.add((org_bnode, RDF.type, FOAF.Organization))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.publisher, org_bnode))
-                        g_h_software.add((org_bnode, adms_identifier, idref_uri))
-                        g_h_organization.add((idref_uri, RDF.type, datacite_OrganizationIdentifier))
-                        g_h_organization.add((idref_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_organization.add((idref_uri, pav_retrievedFrom, software_api_uri))
+                        org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
+                        org_obj_builder.set_retrieved_from(software_query_literal)
+                        org_idref_id_obj_builder = Identifier.Builder(software_api_source_obj, idref_uri)
+                        org_idref_id_obj_builder.set_retrieved_from(software_query_literal)
+                        org_obj_builder.add_identifier(org_idref_id_obj_builder.build())
+                        software_obj_builder.add_creator(org_obj_builder.build())
                 # Lab Structure ROR
                 if(lab_struct_ror_field in software and software[lab_struct_ror_field] != None and len(software[lab_struct_ror_field]) > 0):
                     for lab_ror in software[lab_struct_ror_field]:
                         lab_ror_uri = create_uri(lab_ror)
                         org_bnode = BNode()
-                        g_h_software.add((org_bnode, RDF.type, FOAF.Organization))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.publisher, org_bnode))
-                        g_h_software.add((org_bnode, adms_identifier, lab_ror_uri))
-                        g_h_organization.add((lab_ror_uri, RDF.type, datacite_OrganizationIdentifier))
-                        g_h_organization.add((lab_ror_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_organization.add((lab_ror_uri, pav_retrievedFrom, software_api_uri))
+                        org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
+                        org_obj_builder.set_retrieved_from(software_query_literal)
+                        org_ror_id_obj_builder = Identifier.Builder(software_api_source_obj, lab_ror_uri)
+                        org_ror_id_obj_builder.set_retrieved_from(software_query_literal)
+                        org_obj_builder.add_identifier(org_ror_id_obj_builder.build())
+                        software_obj_builder.add_creator(org_obj_builder.build())
                 # Lab Structure IdRef
                 if(lab_struct_idref_field in software and software[lab_struct_idref_field] != None and len(software[lab_struct_idref_field]) > 0):
                     for lab_idref in software[lab_struct_idref_field]:
                         lab_idref_uri = create_uri(lab_idref)
                         org_bnode = BNode()
-                        g_h_software.add((org_bnode, RDF.type, FOAF.Organization))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_query_literal))
-                        g_h_software.add((org_bnode, pav_retrievedFrom, software_api_uri))
-                        g_h_software.add((software_uri, DCTERMS.publisher, org_bnode))
-                        g_h_software.add((org_bnode, adms_identifier, lab_idref_uri))
-                        g_h_organization.add((lab_idref_uri, RDF.type, datacite_OrganizationIdentifier))
-                        g_h_organization.add((lab_idref_uri, pav_retrievedFrom, software_query_literal))
-                        g_h_organization.add((lab_idref_uri, pav_retrievedFrom, software_api_uri))
+                        org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
+                        org_obj_builder.set_retrieved_from(software_query_literal)
+                        org_idref_id_obj_builder = Identifier.Builder(software_api_source_obj, lab_idref_uri)
+                        org_idref_id_obj_builder.set_retrieved_from(software_query_literal)
+                        org_obj_builder.add_identifier(org_idref_id_obj_builder.build())
+                        software_obj_builder.add_creator(org_obj_builder.build())
                 # Open Access
                 if(oa_field in software and software[oa_field] != None and software[oa_field] == True):
-                    g_h_software.add((software_uri, DCTERMS.rights, Literal("Open Access")))
-                # XML
-                # Attempte to extract the license from the XML
-                if(xml_field in software and software[xml_field] != None):
-                    xml_string = software[xml_field]
-                    xml_string = xml_string.replace('\\"', '"')
-                    xml = ET.fromstring(xml_string)
-                    xml_stmts = xml.findall(".//TEI/biblFull/publicationStmt/availability/licence")
-                    for child in xml_stmts:
-                        if(child.tag == "licence"):
-                            license_uri = create_uri(child.get("target"))
-                            g_h_software.add((software_uri, DCTERMS.license, license_uri))
-                            g_h_software.add((license_uri, RDFS.label, Literal(child.text)))
+                    software_obj_builder.set_rights("Open Access")
+                software_obj = software_obj_builder.build()
+                software_obj.to_rdf(g_h_software)
                 logging.info(f'Added software {software[title_field]}')
             page += 1
 
@@ -350,7 +317,6 @@ def process_hal():
         logging.info(f'Loaded {len(g_h_organization)} triples about organizations from the graph')
 
         hal_sparql_endpoint = "http://sparql.archives-ouvertes.fr/sparql"
-        hal_sparql_endpoint_uri = create_uri(hal_sparql_endpoint)
         hal_org_sparql_query_string = f'''
         PREFIX dct: <http://purl.org/dc/terms/>
         PREFIX dc: <http://purl.org/dc/elements/1.1/>
@@ -393,44 +359,39 @@ def process_hal():
             hal_org_results.serialize(hal_sparql_query_file, format='json')
             hal_sparql_query_file.close()
 
+        source_obj = Source.Builder(URIRef(hal_sparql_endpoint)).build()
+
         # Send GET request to the HAL API
         for binding in hal_org_results:
             if isinstance(binding, ResultRow):
                 binding = binding.asdict()
                 org_uri = create_uri(str(binding['org']))
                 org_id_uri = create_uri(str(binding['id']))
-                if( (org_uri, RDF.type, local_HalOrganization) not in g_h_organization):
-                    g_h_organization.add((org_uri, RDF.type, local_HalOrganization))
-                    g_h_organization.add((org_uri, adms_identifier, org_id_uri))
-                    g_h_organization.add((org_id_uri, RDF.type, datacite_OrganizationIdentifier))
-                    g_h_organization.add((org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
-                    g_h_organization.add((org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
-                    g_h_organization.add((org_uri, RDFS.label, Literal(binding['label'])))
-                    if(binding['acronym'] != None):
-                        g_h_organization.add((org_uri, FOAF.name, Literal(binding['acronym'])))
-                    if(binding['superOrg'] != None):
+                org_obj_builder = Organization.Builder(source_obj, org_uri)
+                org_id_obj = Identifier.Builder(source_obj, org_id_uri).build()
+                if( (org_uri, RDF.type, HAL.Organization) not in g_h_organization):
+                    org_obj_builder.add_identifier(org_id_obj)
+                    org_obj_builder.set_retrieved_from(Literal(hal_org_sparql_query_string))
+                    org_obj_builder.set_label(Literal(binding['label']))
+                    if('acronym' in binding and binding['acronym'] != None):
+                        org_obj_builder.add_alternative(Literal(binding['acronym']))
+                    if('superOrg' in binding and binding['superOrg'] != None):
                         super_org_uri = create_uri(str(binding['superOrg']))
                         super_org_id_uri = create_uri(str(binding['superOrgId']))
                         super_org_label = Literal(binding['superOrgLabel'])
-                        g_h_organization.add((org_uri, DCTERMS.relation, super_org_uri))
-                        g_h_organization.add((super_org_uri, RDF.type, local_HalOrganization))
-                        g_h_organization.add((super_org_uri, pav_retrievedFrom, Literal(hal_org_sparql_query_string)))
-                        g_h_organization.add((super_org_uri, pav_retrievedFrom, hal_sparql_endpoint_uri))
-                        g_h_organization.add((super_org_uri, adms_identifier, super_org_id_uri))
-                        g_h_organization.add((super_org_id_uri, RDF.type, datacite_OrganizationIdentifier))
-                        g_h_organization.add((super_org_uri, RDFS.label, super_org_label))
-        # writing Hal roganisation to file
-        logging.info(f'Writing organization graph to file {len(g_h_organization)} triples')
-        g_h_organization.serialize(destination=g_h_organization_filename, format='turtle')
-        logging.info('Graph written to file')
-
-                
+                        super_org_obj_builder = Organization.Builder(source_obj, super_org_uri)
+                        super_org_id_obj = Identifier.Builder(source_obj, super_org_id_uri).build()
+                        super_org_obj_builder.add_identifier(super_org_id_obj)
+                        super_org_obj_builder.set_label(super_org_label)
+                        super_org_obj_builder.set_retrieved_from(Literal(hal_org_sparql_query_string))
+                        super_org_obj = super_org_obj_builder.build()
+                        org_obj_builder.add_related(super_org_obj)
+                org_obj = org_obj_builder.build()
+                org_obj.to_rdf(g_h_organization)                
 
     process_hal_authors()
     process_hal_software()
     process_hal_organization()
-
-    write_hal_graph()
     
 def write_hal_graph():
     # writing g to a file

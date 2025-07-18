@@ -1,5 +1,6 @@
+from kg.knowledge import Identifier, Paper, Repository, Source
 from util.utilities import create_uri, sanitize, sanitize_uri
-from kg.CONSTANTS import adms_identifier, pav_importedFrom, pav_lastRefreshedOn, local_Source, local_RepositoryId, local_ArXiv, pav_retrievedFrom, bibo_Document, ARXIV
+from kg.CONSTANTS import ARXIV
 from rdflib import Graph, Literal, URIRef
 from rdflib.namespace import DCTERMS, DCAT, RDF, RDFS
 import json
@@ -25,44 +26,37 @@ def process_paper_with_code():
 
     paper_with_code = create_uri(paper_with_code_url)
     num_papers = len(paper_and_code_result)
+    pwc_source_obj = Source.Builder(URIRef(paper_with_code)).build()
 
     for paper in paper_and_code_result:
         # Add the paper to the graph
         paper_uri = create_uri(sanitize_uri(paper['paper_url']))
+        pwc_paper_obj_builder = Paper.Builder(pwc_source_obj, paper_uri)
         if paper_uri == None or paper_uri == '':
             continue
         paper_title_string = ""
         if paper['paper_title'] != None:
             paper_title_string = sanitize(paper['paper_title'])
-        paper_label = Literal(paper_title_string)
+        pwc_paper_obj_builder.set_title(paper_title_string)
         paper_pdf_string = paper['paper_url_pdf']
         paper_arxiv_string = paper['paper_arxiv_id']
-        g_pwc_paper.add((paper_uri, RDF.type, bibo_Document))
-        g_pwc_paper.add((paper_uri, pav_retrievedFrom, paper_with_code))
-        g_pwc_paper.add((paper_uri, DCTERMS.title, paper_label))
         if paper_pdf_string != None:
-            g_pwc_paper.add((paper_uri, DCAT.downloadURL, Literal(paper_pdf_string)))
+            pwc_paper_obj_builder.add_download_url(paper_pdf_string)
         if paper_arxiv_string != None:
             arxiv_uri = create_uri(ARXIV + paper_arxiv_string)
-            g_pwc_paper.add((arxiv_uri, RDF.type, local_ArXiv))
-            g_pwc_paper.add((arxiv_uri, pav_retrievedFrom, paper_with_code))
-            g_pwc_paper.add((paper_uri, adms_identifier, create_uri(ARXIV + paper_arxiv_string)))
+            arxiv_id_obj = Identifier.Builder(pwc_source_obj, arxiv_uri).build()
+            pwc_paper_obj_builder.add_identifier(arxiv_id_obj)
         
         # Add the code to the graph
         paper_repo = create_uri(paper['repo_url'])
-        g_pwc_code.add((paper_repo, RDF.type, local_RepositoryId))
-        g_pwc_code.add((paper_repo, pav_retrievedFrom, paper_with_code))
-        g_pwc_code.add((paper_repo, adms_identifier , paper_repo))
+        repo_obj_obj = Repository.Builder(pwc_source_obj, paper_repo).build()
+        pwc_paper_obj_builder.add_related(repo_obj_obj)
+        repo_obj_obj.to_rdf(g_pwc_code)
 
-        # Add the relationship between the paper and the code
-        g_pwc_paper.add((paper_uri, DCTERMS.relation, paper_repo))
-        g_pwc_code.add((paper_uri, DCTERMS.relation, paper_repo))
-        logging.info(f'Added paper {paper_label} and code {paper_repo} ({num_papers} remaining)')
+        pwc_paper_obj = pwc_paper_obj_builder.build()
+        pwc_paper_obj.to_rdf(g_pwc_paper)
+        logging.info(f'Added paper {paper_title_string} and code {paper_repo} ({num_papers} remaining)')
         num_papers -= 1
-
-    g_pwc_paper.add((paper_with_code, RDF.type, local_Source))
-    g_pwc_paper.add((paper_with_code, pav_importedFrom, Literal(paper_with_code_url + 'about')))
-    g_pwc_paper.add((paper_with_code, pav_lastRefreshedOn, Literal(datetime.datetime.now().isoformat())))
 
     write_paper_with_code_graph()
 

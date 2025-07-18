@@ -5,7 +5,7 @@ from rdflib import Graph, Literal, Namespace, URIRef
 from rdflib.namespace import RDF, RDFS, FOAF, XSD, OWL, DCAT, DCTERMS
 from kg.knowledge import Organization, Paper, Person, Source
 from util.utilities import create_uri, create_bnode
-from kg.CONSTANTS import pav_importedFrom, pav_lastRefreshedOn, pav_retrievedFrom, pav_authoredOn, local_Source, HAL_AUTHOR, local_HalOrganization, local_IdHal, adms_identifier, local_GScholar, local_Orcid, local_IdRef, HAL, ORCID, datacite_OrganizationIdentifier, local_RepositoryId, roh_platform, bibo_Document, bibo_doi
+from kg.CONSTANTS import DOI
 import json
 import hashlib
 
@@ -85,7 +85,7 @@ def process_top_articles_by_domains(domains, nb_years, limit):
 def process_article_to_rdf(article):
     if "DOI" in article:
         doi_string = article["DOI"]
-        article_uri = create_uri("http://doi.org/" + doi_string)
+        article_uri = create_uri(DOI + doi_string)
         article_builder = Paper.Builder(crossref_source_obj, article_uri)
         article_builder.set_doi(doi_string)
         article_builder.set_created(datetime.now().isoformat())
