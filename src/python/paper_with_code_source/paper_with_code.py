@@ -1,4 +1,4 @@
-from kg.knowledge import Identifier, Paper, Repository, Source
+from kg.knowledge import UniqueIdentifier, Paper, Repository, Source
 from util.utilities import create_uri, sanitize, sanitize_uri
 from kg.CONSTANTS import ARXIV
 from rdflib import Graph, Literal, URIRef
@@ -44,7 +44,7 @@ def process_paper_with_code():
             pwc_paper_obj_builder.add_download_url(paper_pdf_string)
         if paper_arxiv_string != None:
             arxiv_uri = create_uri(ARXIV + paper_arxiv_string)
-            arxiv_id_obj = Identifier.Builder(pwc_source_obj, arxiv_uri).build()
+            arxiv_id_obj = UniqueIdentifier.Builder(pwc_source_obj, arxiv_uri).build()
             pwc_paper_obj_builder.add_identifier(arxiv_id_obj)
         
         # Add the code to the graph

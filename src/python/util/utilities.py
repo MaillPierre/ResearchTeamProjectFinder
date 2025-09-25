@@ -1,5 +1,10 @@
+import hashlib
+import os
 import uuid
-from rdflib import URIRef, BNode, Namespace
+from rdflib import Graph, URIRef, BNode, Namespace
+from rdflib.plugins.sparql import prepareQuery
+from rdflib.plugins.sparql.results.jsonresults import JSONResultParser, JSONResultSerializer
+from rdflib.query import Result, ResultRow
 import re
 from github import PaginatedList
 import json
@@ -41,3 +46,23 @@ def json_encode_paginated_list(paginated_list: PaginatedList.PaginatedList):
         logging.error(f"Error: {e}")
 
     return json.JSONEncoder().encode(json_list)
+
+def sparql_cached(query: str) -> Result:
+    sparql_query_hash = hashlib.md5(query.encode()).hexdigest()
+    dblp_article_query_result_filename = f"data/sparql_cache/{sparql_query_hash}.json"
+
+    if(os.path.exists(dblp_article_query_result_filename)):
+        result_parser = JSONResultParser()
+        dblp_article_query_result_page = open(dblp_article_query_result_filename, 'r')
+        dblp_article_query_result = result_parser.parse(source=dblp_article_query_result_page)
+        dblp_article_query_result_page.close()
+        return dblp_article_query_result
+    else:
+        # Send GET request to the DBLP API
+        dblp_sparql_query = prepareQuery(query)
+        logging.info(f"Sending query to DBLP SPARQL endpoint: {query}")
+        dblp_article_query_result = Graph().query(dblp_sparql_query)
+        result_serializer = JSONResultSerializer(dblp_article_query_result)
+        dblp_article_query_result_file = open(dblp_article_query_result_filename, "x", encoding="utf-8")
+        result_serializer.serialize(dblp_article_query_result_file, encoding="utf-8")
+        return dblp_article_query_result

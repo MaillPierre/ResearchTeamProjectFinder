@@ -2,7 +2,7 @@ from rdflib import DCMITYPE, Graph, URIRef, Literal, BNode
 from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, OWL, DCTERMS, DCAT, FOAF
 from rdflib.query import Result, ResultRow
-from kg.knowledge import Identifier, Organization, Person, Software, Source
+from kg.knowledge import UniqueIdentifier, Organization, Person, Software, Source
 from util.utilities import create_uri
 from kg.CONSTANTS import HAL_AUTHOR, HAL, ORCID
 import requests
@@ -77,19 +77,19 @@ def process_hal():
                     if(orcid_field in author and author[orcid_field] != None):
                         for orcid in author[orcid_field]:
                             orcid_uri = create_uri(ORCID + orcid)
-                            orcid_id_builder = Identifier.Builder(hal_author_api_source_obj, orcid_uri)
+                            orcid_id_builder = UniqueIdentifier.Builder(hal_author_api_source_obj, orcid_uri)
                             orcid_id_builder.set_retrieved_from(author_query_literal)
                             author_obj_builder.add_identifier(orcid_id_builder.build())
                     if(gscholar_field in author and author[gscholar_field] != None):
                         for gscholar in author[gscholar_field]:
                             gscholar_uri = create_uri(gscholar)
-                            gscholar_id_builder = Identifier.Builder(hal_author_api_source_obj, gscholar_uri)
+                            gscholar_id_builder = UniqueIdentifier.Builder(hal_author_api_source_obj, gscholar_uri)
                             gscholar_id_builder.set_retrieved_from(author_query_literal)
                             author_obj_builder.add_identifier(gscholar_id_builder.build())
                     if(idref_field in author and author[idref_field] != None):
                         for idref in author[idref_field]:
                             idref_uri = create_uri(idref)
-                            idref_id_builder = Identifier.Builder(hal_author_api_source_obj, idref_uri)
+                            idref_id_builder = UniqueIdentifier.Builder(hal_author_api_source_obj, idref_uri)
                             idref_id_builder.set_retrieved_from(author_query_literal)
                             author_obj_builder.add_identifier(idref_id_builder.build())
                     author_obj = author_obj_builder.build()
@@ -208,7 +208,7 @@ def process_hal():
                         idhal_uri = create_uri(HAL_AUTHOR + idhal)
                         author_bnode = BNode()
                         author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
-                        idhal_obj_builder = Identifier.Builder(software_api_source_obj, idhal_uri)
+                        idhal_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, idhal_uri)
                         idhal_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.add_identifier(idhal_obj_builder.build())
@@ -219,7 +219,7 @@ def process_hal():
                         orcid_uri = create_uri(ORCID + orcid)
                         author_bnode = BNode()
                         author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
-                        orcid_obj_builder = Identifier.Builder(software_api_source_obj, orcid_uri)
+                        orcid_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, orcid_uri)
                         orcid_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.add_identifier(orcid_obj_builder.build())
@@ -230,7 +230,7 @@ def process_hal():
                         gscholar_uri = create_uri( gscholar)
                         author_bnode = BNode()
                         author_obj_builder = Person.Builder(software_api_source_obj, author_bnode)
-                        gscholar_obj_builder = Identifier.Builder(software_api_source_obj, gscholar_uri)
+                        gscholar_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, gscholar_uri)
                         gscholar_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.set_retrieved_from(software_query_literal)
                         author_obj_builder.add_identifier(gscholar_obj_builder.build())
@@ -262,7 +262,7 @@ def process_hal():
                         ror_uri = create_uri(ror)
                         org_bnode = BNode()
                         org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
-                        org_ror_id_obj_builder = Identifier.Builder(software_api_source_obj, ror_uri)
+                        org_ror_id_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, ror_uri)
                         org_ror_id_obj_builder.set_retrieved_from(software_query_literal)
                         org_obj_builder.set_retrieved_from(software_query_literal)
                         org_obj_builder.add_identifier(org_ror_id_obj_builder.build())
@@ -274,7 +274,7 @@ def process_hal():
                         org_bnode = BNode()
                         org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
                         org_obj_builder.set_retrieved_from(software_query_literal)
-                        org_idref_id_obj_builder = Identifier.Builder(software_api_source_obj, idref_uri)
+                        org_idref_id_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, idref_uri)
                         org_idref_id_obj_builder.set_retrieved_from(software_query_literal)
                         org_obj_builder.add_identifier(org_idref_id_obj_builder.build())
                         software_obj_builder.add_creator(org_obj_builder.build())
@@ -285,7 +285,7 @@ def process_hal():
                         org_bnode = BNode()
                         org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
                         org_obj_builder.set_retrieved_from(software_query_literal)
-                        org_ror_id_obj_builder = Identifier.Builder(software_api_source_obj, lab_ror_uri)
+                        org_ror_id_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, lab_ror_uri)
                         org_ror_id_obj_builder.set_retrieved_from(software_query_literal)
                         org_obj_builder.add_identifier(org_ror_id_obj_builder.build())
                         software_obj_builder.add_creator(org_obj_builder.build())
@@ -296,7 +296,7 @@ def process_hal():
                         org_bnode = BNode()
                         org_obj_builder = Organization.Builder(software_api_source_obj, org_bnode)
                         org_obj_builder.set_retrieved_from(software_query_literal)
-                        org_idref_id_obj_builder = Identifier.Builder(software_api_source_obj, lab_idref_uri)
+                        org_idref_id_obj_builder = UniqueIdentifier.Builder(software_api_source_obj, lab_idref_uri)
                         org_idref_id_obj_builder.set_retrieved_from(software_query_literal)
                         org_obj_builder.add_identifier(org_idref_id_obj_builder.build())
                         software_obj_builder.add_creator(org_obj_builder.build())
@@ -368,7 +368,7 @@ def process_hal():
                 org_uri = create_uri(str(binding['org']))
                 org_id_uri = create_uri(str(binding['id']))
                 org_obj_builder = Organization.Builder(source_obj, org_uri)
-                org_id_obj = Identifier.Builder(source_obj, org_id_uri).build()
+                org_id_obj = UniqueIdentifier.Builder(source_obj, org_id_uri).build()
                 if( (org_uri, RDF.type, HAL.Organization) not in g_h_organization):
                     org_obj_builder.add_identifier(org_id_obj)
                     org_obj_builder.set_retrieved_from(Literal(hal_org_sparql_query_string))
@@ -380,7 +380,7 @@ def process_hal():
                         super_org_id_uri = create_uri(str(binding['superOrgId']))
                         super_org_label = Literal(binding['superOrgLabel'])
                         super_org_obj_builder = Organization.Builder(source_obj, super_org_uri)
-                        super_org_id_obj = Identifier.Builder(source_obj, super_org_id_uri).build()
+                        super_org_id_obj = UniqueIdentifier.Builder(source_obj, super_org_id_uri).build()
                         super_org_obj_builder.add_identifier(super_org_id_obj)
                         super_org_obj_builder.set_label(super_org_label)
                         super_org_obj_builder.set_retrieved_from(Literal(hal_org_sparql_query_string))

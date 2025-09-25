@@ -1,5 +1,5 @@
 from dotenv import load_dotenv
-from dblp_source.dblp import dblp_test
+from dblp_source.dblp import dblp_most_cited_articles
 from hal_source.hal import process_hal, write_hal_graph
 from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
@@ -17,6 +17,7 @@ def write_graphs_to_files():
     write_gitlab_graph()
     write_paper_with_code_graph()
     write_crossref_graph()
+    write_dblp_graph()
     print('Graphs written to files.')
 
 def signal_handler(sig, frame):
@@ -41,7 +42,7 @@ def main():
             # executor.submit(process_github),
             # executor.submit(process_gitlab)
             # executor.submit(process_crossref)
-            executor.submit(dblp_test)
+            executor.submit(process_dblp)
         ]
         for future in concurrent.futures.as_completed(futures):
             print(f'Process completed: {future.result()}')

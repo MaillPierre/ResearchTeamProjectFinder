@@ -1,7 +1,7 @@
 from rdflib import DCAT, DCMITYPE, DCTERMS, DOAP, FOAF, OWL, RDF, RDFS, XSD, Graph, Literal, URIRef, BNode
 from datetime import datetime
 
-from kg.CONSTANTS import ADMS, BIBO, DATACITE, LOCAL, OO, PAV, ROH
+from kg.CONSTANTS import ADMS, BIBO, CITO, DATACITE, LOCAL, OO, PAV, ROH
 from util.utilities import create_uri
 
 class RDFResource:
@@ -158,13 +158,13 @@ class Thing(RDFResource):
         else:
             return hash(self.label())
     
-class Identifier(Thing):
+class UniqueIdentifier(Thing):
     class Builder(Thing.Builder):
         def __init__(self, source : Source, uri: URIRef | BNode):
             super().__init__(source, uri)
 
         def build(self):
-            return Identifier(self)
+            return UniqueIdentifier(self)
         
     def __init__(self, builder: Builder):
         super().__init__(builder)
@@ -186,7 +186,7 @@ class Resource (Thing):
             self.modified : str | None = None
             self.version : str | None = None
             self.referenced_by : set[Resource] = set()
-            self.identifiers : set[Identifier] = set()
+            self.identifiers : set[UniqueIdentifier] = set()
 
         def build(self):
             return Resource(self)
@@ -219,7 +219,7 @@ class Resource (Thing):
             self.referenced_by.add(referenced_by)
             return self
         
-        def add_identifier(self, identifier : Identifier):
+        def add_identifier(self, identifier : UniqueIdentifier):
             self.identifiers.add(identifier)
             return self
         
@@ -320,13 +320,13 @@ class Organization (Agent):
             super().__init__(source, create_uri(label))
             self.set_label(label)
             self.alternatives: set[str] = set()
-            self.identifiers: set[Identifier] = set()
+            self.identifiers: set[UniqueIdentifier] = set()
 
         def add_alternative(self, alternative: str):
             self.alternatives.add(alternative)
             return self
         
-        def add_identifier(self, identifier: Identifier):
+        def add_identifier(self, identifier: UniqueIdentifier):
             self.identifiers.add(identifier)
             return self
         
@@ -372,7 +372,7 @@ class Person (Agent):
             self.alternatives : set[str] = set()
             self.orcid : str | URIRef | None = None
             self.affiliations : set[Organization] = set()
-            self.identifiers : set[Identifier]  = set()
+            self.identifiers : set[UniqueIdentifier]  = set()
             self.contacts: set[Literal | URIRef] = set()
 
         def set_first_name(self, first_name : str):
@@ -395,7 +395,7 @@ class Person (Agent):
             self.affiliations.add(affiliation)
             return self
         
-        def add_identifier(self, identifier : Identifier):
+        def add_identifier(self, identifier : UniqueIdentifier):
             self.identifiers.add(identifier)
             return self
         
@@ -429,7 +429,7 @@ class Person (Agent):
     def affiliations(self) -> set[Organization]:
         return self.builder.affiliations
     
-    def identifiers(self) -> set[Identifier]:
+    def identifiers(self) -> set[UniqueIdentifier]:
         return self.builder.identifiers
     
     def contacts(self) -> set[Literal | URIRef]:
@@ -456,6 +456,50 @@ class Person (Agent):
         for contact in self.contacts():
             graph.add((self.uri(), OO.contact, contact))
         
+
+class CitationCount(RDFResource):
+    class Builder(RDFResource.Builder):
+        def __init__(self, count: int, source: Source):
+            super().__init__(BNode())
+            self.count: int = count
+            self.source: Source = source
+            self.date_of_citation: Literal | None = None
+
+        def set_date_of_citation(self, date: str):
+            self.date_of_citation = Literal(date)
+        
+        def build(self):
+            return CitationCount(self)
+
+    def __init__(self, builder: Builder):
+        super().__init__(builder)
+        self.builder = builder
+
+    def source(self) -> Source:
+        return self.builder.source 
+    
+    def count(self) -> int:
+        return self.builder.count
+    
+    def date_of_citation(self) -> Literal | None:
+        return self.builder.date_of_citation
+    
+    def to_rdf(self, graph: Graph):
+        graph.add((self.uri(), DCTERMS.source, self.source().uri()))
+        graph.add((self.uri(), RDF.value, Literal(self.count())))
+        if self.date_of_citation() != None:
+            graph.add((self.uri(), DCTERMS.date, Literal(self.date_of_citation())))
+        self.source().to_rdf(graph)
+        return super().to_rdf(graph)
+    
+    def __hash__(self):
+        return hash(self.source()) + hash(self.uri)
+
+    def __str__(self):
+        return f"{self.source()}: {self.count} {self.comments}"
+    
+    def __eq__(self, other):
+        return self.source() == other.source() and self.count() == other.count() and self.date_of_citation() == other.date_of_citation()
         
 class Paper (Resource):
 
@@ -467,9 +511,8 @@ class Paper (Resource):
             self.publication_date : str | None = None
             self.venue : URIRef | BNode | None = None
             self.doi : URIRef | None = None
-            self.identifiers : set[Identifier] = set()
             self.related_works : set[Paper] = set()
-            self.citation_count : int = 0
+            self.citation_count : set[CitationCount] = set()
             self.repositories : set[URIRef] = set()
             self.download_url : set[Literal] = set()
 
@@ -504,16 +547,12 @@ class Paper (Resource):
             self.doi = doi
             return self
         
-        def add_identifier(self, identifier : Identifier):
-            self.identifiers.add(identifier)
-            return self
-        
         def add_related_work(self, related_work):
             self.related_works.add(related_work)
             return self
         
-        def set_citation_count(self, citation_count : int):
-            self.citation_count = citation_count
+        def add_citation_count(self, citation_count : CitationCount):
+            self.citation_count.add(citation_count)
             return self
         
         def add_repository(self, repository : URIRef):
@@ -543,14 +582,18 @@ class Paper (Resource):
     def doi(self) -> URIRef | None:
         return self.builder.doi
     
-    def identifiers(self) -> set[Identifier]:
+    def identifiers(self) -> set[UniqueIdentifier]:
         return self.builder.identifiers
     
     def related_works(self):
         return self.builder.related_works
     
-    def citation_count(self) -> int :
+    def citation_count(self) -> set[CitationCount] :
         return self.builder.citation_count
+        
+    def add_citation_count(self, citation_count : CitationCount):
+        self.builder.citation_count.add(citation_count)
+        return self
     
     def repositories(self) -> set[URIRef]:
         return self.builder.repositories
@@ -580,13 +623,16 @@ class Paper (Resource):
         if self.venue() is not None:
             graph.add((self.uri(), DCTERMS.isPartOf, Literal(self.venue())))
         if self.doi() is not None:
-            graph.add((self.uri(), DCTERMS.identifier, Literal(self.doi())))
-            graph.add((self.uri(), BIBO.doi, Literal(self.doi())))
+            graph.add((self.uri(), DCTERMS.identifier, self.doi())) # type: ignore
+            graph.add((self.uri(), BIBO.doi, self.doi())) # type: ignore
         for download_url in self.download_url():
             graph.add((self.uri(), DCAT.downloadURL, download_url))
         for related_work in self.related_works():
             graph.add((self.uri(), DCTERMS.relation, related_work.uri()))
             related_work.to_rdf(graph)
+        for citation in self.citation_count():
+            graph.add((self.uri(), DCTERMS.bibliographicCitation, citation.uri()))
+            citation.to_rdf(graph)
 
     def __str__(self):
         return f"{super().__str__()} Paper({self.title()}, {self.authors()}, {self.publication_date()}, {self.venue()}, {self.doi()})"
@@ -686,3 +732,4 @@ class Software(Resource):
     
     def __hash__(self):
         return hash((super().__hash__(), tuple(self.creators())))
+    

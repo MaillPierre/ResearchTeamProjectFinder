@@ -3,7 +3,7 @@ from rdflib.plugins.sparql import prepareQuery
 from rdflib.namespace import RDF, RDFS, DCTERMS, FOAF
 from rdflib.query import Result, ResultRow
 from github import Github
-from kg.knowledge import Identifier, Organization, Person, Source
+from kg.knowledge import UniqueIdentifier, Organization, Person, Source
 from util.utilities import create_uri, json_encode_paginated_list
 from kg.CONSTANTS import ADMS, PAV , LOCAL
 import os
@@ -79,7 +79,7 @@ def process_github():
             for user in user_results:
                 user_github_id_uri = create_uri(user['url'])
                 gh_person_obj_builder = Person.Builder(gh_source_obj, user_github_id_uri)
-                gh_person_id = Identifier.Builder(gh_source_obj, user_github_id_uri).build()
+                gh_person_id = UniqueIdentifier.Builder(gh_source_obj, user_github_id_uri).build()
                 logging.info(f'Adding user {user["login"]} to the graph')
                 gh_person_obj_builder.add_identifier(gh_person_id)
                 gh_person_obj_builder.add_alternative(user['login'])
