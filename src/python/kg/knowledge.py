@@ -585,6 +585,10 @@ class Paper (Resource):
     def identifiers(self) -> set[UniqueIdentifier]:
         return self.builder.identifiers
     
+    def add_identifier(self, identifier : UniqueIdentifier):
+        self.builder.add_identifier(identifier)
+        return self
+    
     def related_works(self):
         return self.builder.related_works
     
@@ -600,7 +604,6 @@ class Paper (Resource):
     
     def download_url(self) -> set[Literal]:
         return self.builder.download_url
-    
     
     def __eq__(self, other):
         if not isinstance(other, Paper):

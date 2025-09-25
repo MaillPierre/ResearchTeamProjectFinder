@@ -62,7 +62,8 @@ def sparql_cached(query: str) -> Result:
         dblp_sparql_query = prepareQuery(query)
         logging.info(f"Sending query to DBLP SPARQL endpoint: {query}")
         dblp_article_query_result = Graph().query(dblp_sparql_query)
-        result_serializer = JSONResultSerializer(dblp_article_query_result)
-        dblp_article_query_result_file = open(dblp_article_query_result_filename, "x", encoding="utf-8")
-        result_serializer.serialize(dblp_article_query_result_file, encoding="utf-8")
+        if len(dblp_article_query_result) > 0:
+            result_serializer = JSONResultSerializer(dblp_article_query_result)
+            dblp_article_query_result_file = open(dblp_article_query_result_filename, "x", encoding="utf-8")
+            result_serializer.serialize(dblp_article_query_result_file, encoding="utf-8")
         return dblp_article_query_result

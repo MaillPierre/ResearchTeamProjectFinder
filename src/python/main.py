@@ -1,8 +1,10 @@
 from dotenv import load_dotenv
+from rdflib import Graph
 from dblp_source.dblp import dblp_most_cited_articles
 from hal_source.hal import process_hal, write_hal_graph
 from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
+from kg.CONSTANTS import LOCAL
 from paper_with_code_source.paper_with_code import process_paper_with_code, write_paper_with_code_graph
 from crossref_source.crossref import process_crossref, write_crossref_graph
 import logging
@@ -17,7 +19,6 @@ def write_graphs_to_files():
     write_gitlab_graph()
     write_paper_with_code_graph()
     write_crossref_graph()
-    write_dblp_graph()
     print('Graphs written to files.')
 
 def signal_handler(sig, frame):
@@ -34,20 +35,14 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = [
-            # executor.submit(process_paper_with_code),
-            # executor.submit(process_hal),
-            # executor.submit(process_github),
-            # executor.submit(process_gitlab)
-            # executor.submit(process_crossref)
-            executor.submit(process_dblp)
-        ]
-        for future in concurrent.futures.as_completed(futures):
-            print(f'Process completed: {future.result()}')
+    final_graph = Graph()
     
-    write_graphs_to_files()
+    papers = dblp_most_cited_articles(start_year=2020)
+    for paper in papers:
+        logging.debug(f"Converting {paper.uri()} to RDF")
+        paper.to_rdf(final_graph)
+
+    final_graph.serialize("tmp/test.ttl", "turtle", str(LOCAL))
 
     exit()
 
