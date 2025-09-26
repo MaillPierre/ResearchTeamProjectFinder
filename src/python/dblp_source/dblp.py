@@ -10,7 +10,7 @@ from util.utilities import sparql_cached
 
 logging.basicConfig(filename='app.log', level=logging.DEBUG)
 
-dblp_source_obj = Source.Builder(URIRef("https://sparql.dblp.org/sparql")).build()
+dblp_source_obj = Source(URIRef("https://sparql.dblp.org/sparql"))
 
 def get_article_per_year_sparql_result(publication_year: int, limit: int = 1000, offset: int = 0) -> Result:
     dblp_article_per_year_query = f"""
@@ -48,7 +48,7 @@ def get_article_per_year_sparql_result(publication_year: int, limit: int = 1000,
 def get_article_same_as_sparql_result(article_list: list[Paper]) -> Result:
     value_list = ""
     for articl_obj in article_list:
-        value_list += '<' + articl_obj.uri() + '> '
+        value_list += '<' + articl_obj.uri + '> '
     dblp_article_sameAs_query = f"""
     PREFIX owl: <http://www.w3.org/2002/07/owl#>
     SELECT ?paper ?sameAs {{
@@ -83,7 +83,7 @@ def get_article_same_as(papers: dict[URIRef, Paper]) -> set[Paper]:
                 if variable == paper_variable:
                     paper_uri = binding[paper_variable]
                 if variable == sameas_variable:
-                    paper_identifier = UniqueIdentifier.Builder(dblp_source_obj, URIRef(binding[sameas_variable])).build()
+                    paper_identifier = UniqueIdentifier(dblp_source_obj, URIRef(binding[sameas_variable]))
             if paper_uri != None and paper_identifier != None:
                 papers[paper_uri].add_identifier(paper_identifier) # type: ignore
     return set(papers.values())
@@ -120,17 +120,16 @@ def get_article_per_year(year: int, limit: int, offset=0)-> set[Paper]:
         if paper_uri is None or paper_title is None or paper_cites is None:
             pass
         else:
-            article_citation_count_builder = CitationCount.Builder(source=dblp_source_obj,count=paper_cites)
-            article_citation_count = article_citation_count_builder.build()
+            article_citation_count = CitationCount(source=dblp_source_obj,count=paper_cites)
             if paper_uri not in result_dict:
-                article_obj_builder = Paper.Builder(dblp_source_obj, URIRef(paper_uri))
-                article_obj_builder.set_title(paper_title)
-                article_citation_count_builder = CitationCount.Builder(source=dblp_source_obj,count=paper_cites)
-                article_citation_count = article_citation_count_builder.build()
-                article_obj_builder.add_citation_count(article_citation_count)
+                article_obj = Paper(dblp_source_obj, URIRef(paper_uri))
+                article_obj.set_title(paper_title)
+                article_citation_count = CitationCount(source=dblp_source_obj,count=paper_cites)
+                article_citation_count = article_citation_count
+                article_obj.add_citation_count(article_citation_count)
                 if paper_doi != None:
-                    article_obj_builder.set_doi(URIRef(paper_doi))
-                result_dict[paper_uri] = article_obj_builder.build()
+                    article_obj.set_doi(URIRef(paper_doi))
+                result_dict[paper_uri] = article_obj
             else:
                 result_dict[paper_uri].add_citation_count(article_citation_count)
 
@@ -138,7 +137,6 @@ def get_article_per_year(year: int, limit: int, offset=0)-> set[Paper]:
     return result
 
 def dblp_most_cited_articles(start_year:int, sparql_limit = 1000) -> set[Paper]:
-    logging.debug(f"dblp_most_cited_articles({start_year}, {sparql_limit})")
     current_year = datetime.now().year
     dblp_results: set[Paper] = get_article_per_year(year=start_year, limit=sparql_limit)
     for inter_year in range(start_year+1, current_year+1):

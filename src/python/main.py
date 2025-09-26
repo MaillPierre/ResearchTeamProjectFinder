@@ -6,7 +6,7 @@ from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
 from kg.CONSTANTS import LOCAL
 from paper_with_code_source.paper_with_code import process_paper_with_code, write_paper_with_code_graph
-from crossref_source.crossref import process_crossref, write_crossref_graph
+from crossref_source.crossref import expand_article_obj_from_crossref, process_crossref, write_crossref_graph
 import logging
 import concurrent.futures
 import signal
@@ -37,9 +37,10 @@ def main():
 
     final_graph = Graph()
     
-    papers = dblp_most_cited_articles(start_year=2020)
+    papers = dblp_most_cited_articles(start_year=2020, sparql_limit=1000)
     for paper in papers:
-        logging.debug(f"Converting {paper.uri()} to RDF")
+        expand_article_obj_from_crossref(paper)
+        logging.debug(f"Converting {paper.uri} to RDF")
         paper.to_rdf(final_graph)
 
     final_graph.serialize("tmp/test.ttl", "turtle", str(LOCAL))
