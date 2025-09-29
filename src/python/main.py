@@ -27,7 +27,7 @@ def signal_handler(sig, frame):
     sys.exit(0)
 
 def main():
-    logging.basicConfig(filename='app.log', level=logging.DEBUG)
+    logging.basicConfig(filename='app.log', level=logging.INFO)
     # Loading .env variables
     load_dotenv()
 
@@ -37,13 +37,13 @@ def main():
 
     final_graph = Graph()
     
-    papers = dblp_most_cited_articles(start_year=2020, sparql_limit=1000)
+    papers = dblp_most_cited_articles(start_year=2020, sparql_limit=10)
     for paper in papers:
         expand_article_obj_from_crossref(paper)
         logging.debug(f"Converting {paper.uri} to RDF")
         paper.to_rdf(final_graph)
 
-    final_graph.serialize("tmp/test.ttl", "turtle", str(LOCAL))
+    final_graph.serialize("rdf/data.ttl", "turtle", str(LOCAL))
 
     exit()
 

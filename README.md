@@ -16,8 +16,8 @@ The aim of this project is to create a tool able to use the different APIs avail
 
 #### Get the list of most cited papers per year
 - CrossRef
-    - [ ] List of most-cited recent papers 
-      - [ ] in given domains
+  - [x] List of most-cited recent papers 
+    - [ ] in given domains
 - DBLP
   - [x] List of most cited papers per year
 
@@ -26,20 +26,20 @@ The aim of this project is to create a tool able to use the different APIs avail
     - CrossRef
       - [ ] List of authors and organizations
     - DBLP
-      - [x] List of authors and organizations
+      - [] List of authors and organizations
   - Check if they are known people from France or the EU
     - HAL
-      - [x] List of authors
-      - [x] List of organizations
-      - [x] List of softwares
+      - [ ] List of authors
+      - [ ] List of organizations
+      - [ ] List of softwares
 
 #### Check if there are open-source projects related to the paper done by known people
   - Github
-    - [x] Retrieve account of known people
+    - [ ] Retrieve account of known people
         - [ ] Retrieve open-source repositories of known peoples
             - [ ] Retrieve organization of known people with open-source repositories
   - Gitlab instances
-    - [x] Retrieve open source repositories
+    - [ ] Retrieve open source repositories
         - [ ] Retrieve the accounts of the creator of open source repositories
 
 #### Consolidate the data

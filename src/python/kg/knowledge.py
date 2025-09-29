@@ -18,7 +18,10 @@ class RDFResource:
             graph.add((self.uri, RDFS.comment, comment))
 
     def __hash__(self):
-        return hash(self.uri)
+        if isinstance(self.uri, URIRef):
+            return hash(self.uri)
+        else:
+            return 0
     
     def __eq__(self, other):
         if not isinstance(other, RDFResource):
@@ -49,6 +52,9 @@ class Source (RDFResource):
         graph.add((self.uri, PAV.lastRefreshedOn, Literal(self.lastRefreshedOn.isoformat(), datatype=XSD.dateTime)))
         graph.add((self.uri, PAV.retrievedOn, Literal(self.retrievedOn.isoformat(), datatype=XSD.dateTime)))
         super().to_rdf(graph)
+
+    def __hash__(self):
+        return super().__hash__() + hash(self.importedFrom)
 
 class Thing(RDFResource):
         
@@ -98,10 +104,12 @@ class Thing(RDFResource):
         return f"URI: {self.uri} - Label: {self.label}"
     
     def __hash__(self):
+        base = super().__hash__()
         if isinstance(self.uri, URIRef):
-            return hash(self.uri)
+            base += hash(self.uri)
         else:
-            return hash(self.label)
+            base += hash(self.label)
+        return base + hash(self.retrieved_from) + hash(self.source)
     
 class UniqueIdentifier(Thing):        
     def __init__(self, source : Source, uri: URIRef | BNode):
@@ -110,6 +118,9 @@ class UniqueIdentifier(Thing):
     def to_rdf(self, graph : Graph):
         super().to_rdf(graph)
         graph.add((self.uri, RDF.type, DATACITE.Identifier))
+    
+    def __hash__(self):
+        return super().__hash__()
 
 class Resource (Thing):        
     def __init__(self, source : Source, uri: URIRef | BNode):
@@ -170,6 +181,9 @@ class Resource (Thing):
     def __str__(self):
         return super().__str__() + f"Abstract: {self.abstract} License: {self.license} Keywords: {self.keywords} Created: {self.created} Modified: {self.modified} Version: {self.version} Related: {self.related} Identifiers: {self.identifiers} Referenced by: {self.referenced_by}"
     
+    def __hash__(self):
+        return super().__hash__() + hash(self.abstract) + hash(self.version)
+    
 class Repository (Resource):
         
     def __init__(self, source : Source, uri: URIRef | BNode):
@@ -186,6 +200,9 @@ class Agent(Thing):
 
     def add_location(self, location: URIRef | Literal):
         self.locations.add(location)
+    
+    def __hash__(self):
+        return super().__hash__() + hash(self.retrieved_from)
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
@@ -267,7 +284,7 @@ class Person (Agent):
             if isinstance(self.orcid, URIRef):
                 graph.add((self.uri, OWL.sameAs, self.orcid)) # type: ignore
             else:
-                graph.add((self.uri, LOCAL.orcid, Literal(self.orcid)))
+                graph.add((self.uri, ROH.ORCID, Literal(self.orcid)))
         for affiliation in self.affiliations:
             graph.add((self.uri, FOAF.member, affiliation.uri))
             affiliation.to_rdf(graph)
@@ -276,6 +293,12 @@ class Person (Agent):
             identifier.to_rdf(graph)
         for contact in self.contacts:
             graph.add((self.uri, OO.contact, contact))
+    
+    def __hash__(self):
+        base = super().__hash__()
+        if self.orcid != None:
+            base += hash(self.orcid)
+        return base + hash(self.first_name) + hash(self.last_name)
         
 
 class CitationCount(RDFResource):
@@ -297,7 +320,7 @@ class CitationCount(RDFResource):
         return super().to_rdf(graph)
     
     def __hash__(self):
-        return hash(self.source) + hash(self.uri)
+        return super().__hash__() + hash(self.source) + hash(self.count)
 
     def __str__(self):
         return f"{self.source} {self.count} {self.comments}"
@@ -357,7 +380,7 @@ class Paper (Resource):
         return self.uri == other.uri
     
     def __hash__(self):
-        return hash(self.uri)
+        return super().__hash__() +  hash(self.uri)
     
     def to_rdf(self, graph : Graph):
         super().to_rdf(graph)

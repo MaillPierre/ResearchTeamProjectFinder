@@ -77,15 +77,17 @@ def retrieve_articles_from_crossref(ids: list[str] | None = None, query: str | N
     if check_crossref_answer_exists(ids=ids, query=query, start_date=start_date, end_date=end_date, sort=sort, limit=limit, order=order):
         crossref_answer = retrieve_crossref_answer(query=query, start_date=start_date, end_date=end_date, limit=limit, order=order)
     else:
-        crossref_answer = cr.works(
+        try:
+            crossref_answer = cr.works(
                    ids=ids,
                    query=query,
                    filter=filter,
                    sort=sort,
                    limit=limit,
                    order=order)
-        store_crossref_answer(crossref_answer=crossref_answer, query=query, start_date=start_date, end_date=end_date, limit=limit, order=order)
-        
+            store_crossref_answer(crossref_answer=crossref_answer, query=query, start_date=start_date, end_date=end_date, limit=limit, order=order)
+        except:
+            return dict()
     
     # Ensure the result is a list of dictionaries
     return crossref_answer
@@ -150,8 +152,9 @@ def expand_article_obj_from_crossref(article_obj : Paper) -> Paper:
                 if "intended-application" in link:
                     intended_application = link["intended-application"]
 
-        for author in article_json['author']:
-            add_authors_to_article(author, article_obj)
+        if "author" in article_json:
+            for author in article_json['author']:
+                add_authors_to_article(author, article_obj)
     return article_obj
 
 def process_crossref_article_to_obj(article) -> Paper | None:
@@ -161,16 +164,19 @@ def process_crossref_article_to_obj(article) -> Paper | None:
         article_obj = Paper(crossref_source_obj, article_uri)
         article_obj.set_doi(doi_string)
         article_obj.set_created(datetime.now().isoformat())
-        titles = article["title"]
-        for title in titles:
-            title_str = title
-            article_obj.set_title(title_str)
-        citation_count = CitationCount(int(article["is-referenced-by-count"]), crossref_source_obj)
-        article_obj.add_citation_count(citation_count)
+        if "titles" in article:
+            titles = article["title"]
+            for title in titles:
+                title_str = title
+                article_obj.set_title(title_str)
+        if "is-referenced-by-count" in article:
+            citation_count = CitationCount(int(article["is-referenced-by-count"]), crossref_source_obj)
+            article_obj.add_citation_count(citation_count)
 
-        created_str = crossref_datepart_to_datetime(article["created"]["date-time"])
-        if created_str is not None:
-            article_obj.set_created(created_str.isoformat())
+        if "created" in article:
+            created_str = crossref_datepart_to_datetime(article["created"]["date-time"])
+            if created_str is not None:
+                article_obj.set_created(created_str.isoformat())
 
         if "abstract" in article:
             abstract_str = article["abstract"]
@@ -196,8 +202,9 @@ def process_crossref_article_to_obj(article) -> Paper | None:
                 if "intended-application" in link:
                     intended_application = link["intended-application"]
 
-        for author in article['author']:
-            add_authors_to_article(author, article_obj)
+        if "author" in article:
+            for author in article['author']:
+                add_authors_to_article(author, article_obj)
 
         logging.info(f"Processing article {doi_string} with title {titles} and citation count {citation_count}")
         return article_obj

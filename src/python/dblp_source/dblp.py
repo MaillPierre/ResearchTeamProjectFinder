@@ -8,7 +8,7 @@ from rdflib.query import Result, ResultRow
 from kg.knowledge import CitationCount, UniqueIdentifier, Source, Paper
 from util.utilities import sparql_cached
 
-logging.basicConfig(filename='app.log', level=logging.DEBUG)
+logging.basicConfig(filename='app.log', level=logging.INFO)
 
 dblp_source_obj = Source(URIRef("https://sparql.dblp.org/sparql"))
 
