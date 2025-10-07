@@ -202,7 +202,7 @@ class Agent(Thing):
         self.locations.add(location)
     
     def __hash__(self):
-        return super().__hash__() + hash(self.retrieved_from)
+        return super().__hash__()
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
@@ -228,7 +228,7 @@ class Organization (Agent):
         return super().__eq__(value)
     
     def __hash__(self):
-        return super().__hash__()
+        return super().__hash__() + hash(self.identifiers)
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
@@ -326,7 +326,10 @@ class CitationCount(RDFResource):
         return f"{self.source} {self.count} {self.comments}"
     
     def __eq__(self, other):
-        return self.source == other.source() and self.count == other.count() and self.date_of_citation == other.date_of_citation()
+        if isinstance(other, CitationCount):
+            return self.source == other.source and self.count == other.count and self.date_of_citation == other.date_of_citation
+        else:
+            return False
         
 class Paper (Resource):        
     def __init__(self, source: Source, uri: URIRef | BNode):

@@ -43,7 +43,7 @@ def main():
         logging.debug(f"Converting {paper.uri} to RDF")
         paper.to_rdf(final_graph)
 
-    final_graph.serialize("rdf/data.ttl", "turtle", str(LOCAL))
+    final_graph.serialize("data/rdf/data.ttl", "turtle", str(LOCAL))
 
     exit()
 

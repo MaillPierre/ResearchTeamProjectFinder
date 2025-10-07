@@ -22,6 +22,8 @@ The aim of this project is to create a tool able to use the different APIs avail
   - [x] List of most cited papers per year
 
 #### Get the list of people who have published these papers and check if they are known people from France or the EU
+  - OpenAIRE
+    - [ ] Retrieval on paper subjects
   - get the authors and their organizations
     - CrossRef
       - [ ] List of authors and organizations

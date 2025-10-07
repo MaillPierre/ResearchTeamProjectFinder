@@ -10,6 +10,8 @@ from github import PaginatedList
 import json
 import logging
 
+import requests
+
 
 # Helper functions
 
@@ -49,21 +51,36 @@ def json_encode_paginated_list(paginated_list: PaginatedList.PaginatedList):
 
 def sparql_cached(query: str) -> Result:
     sparql_query_hash = hashlib.md5(query.encode()).hexdigest()
-    dblp_article_query_result_filename = f"data/sparql_cache/{sparql_query_hash}.json"
+    query_result_filename = f"data/sparql_cache/{sparql_query_hash}.json"
 
-    if(os.path.exists(dblp_article_query_result_filename)):
+    if(os.path.exists(query_result_filename)):
         result_parser = JSONResultParser()
-        dblp_article_query_result_page = open(dblp_article_query_result_filename, 'r')
-        dblp_article_query_result = result_parser.parse(source=dblp_article_query_result_page)
-        dblp_article_query_result_page.close()
-        return dblp_article_query_result
+        query_result_page = open(query_result_filename, 'r')
+        query_result = result_parser.parse(source=query_result_page)
+        query_result_page.close()
+        return query_result
     else:
-        # Send GET request to the DBLP API
-        dblp_sparql_query = prepareQuery(query)
+        sparql_query = prepareQuery(query)
         logging.info(f"Sending query to DBLP SPARQL endpoint: {query}")
-        dblp_article_query_result = Graph().query(dblp_sparql_query)
-        if len(dblp_article_query_result) > 0:
-            result_serializer = JSONResultSerializer(dblp_article_query_result)
-            dblp_article_query_result_file = open(dblp_article_query_result_filename, "x", encoding="utf-8")
-            result_serializer.serialize(dblp_article_query_result_file, encoding="utf-8")
-        return dblp_article_query_result
+        query_result = Graph().query(sparql_query)
+        if len(query_result) > 0:
+            result_serializer = JSONResultSerializer(query_result)
+            query_result_file = open(query_result_filename, "x", encoding="utf-8")
+            result_serializer.serialize(query_result_file, encoding="utf-8")
+        return query_result
+    
+def api_cached_query(api_url: str, api_query_file_prefix: str ):
+    api_result = None
+
+    api_query_file = f"{api_query_file_prefix}{hashlib.md5((api_url.encode())).hexdigest()}.json"
+    if(os.path.exists(api_query_file)):
+        api_page = open(api_query_file, 'r')
+        api_result = json.load(api_page)
+        api_page.close()
+    else:
+        api_response = requests.get(api_url)
+        api_result = api_response.json()
+        api_page = open(api_query_file, 'w')
+        json.dump(api_result, api_page)
+        api_page.close()
+    return api_result
