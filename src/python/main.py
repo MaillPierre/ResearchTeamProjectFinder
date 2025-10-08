@@ -1,12 +1,12 @@
 from dotenv import load_dotenv
 from rdflib import Graph
 from dblp_source.dblp import dblp_most_cited_articles
-from hal_source.hal import process_hal, write_hal_graph
+from hal_source.hal import hal_expand_article_ref, process_hal, write_hal_graph
 from github_source.github import process_github, write_github_graph
 from gitlab_source.gitlab import process_gitlab, write_gitlab_graph
 from kg.CONSTANTS import LOCAL
 from paper_with_code_source.paper_with_code import process_paper_with_code, write_paper_with_code_graph
-from crossref_source.crossref import expand_article_obj_from_crossref, process_crossref, write_crossref_graph
+from crossref_source.crossref import crossref_expand_article_obj, process_crossref, write_crossref_graph
 import logging
 import concurrent.futures
 import signal
@@ -39,7 +39,8 @@ def main():
     
     papers = dblp_most_cited_articles(start_year=2020, sparql_limit=10)
     for paper in papers:
-        expand_article_obj_from_crossref(paper)
+        crossref_expand_article_obj(paper)
+        hal_expand_article_ref(paper)
         logging.debug(f"Converting {paper.uri} to RDF")
         paper.to_rdf(final_graph)
 

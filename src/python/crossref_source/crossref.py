@@ -107,7 +107,7 @@ def process_top_articles_by_domains(domains, nb_years, limit):
         for article in top_domain_articles["message"]["items"]:
             process_crossref_article_to_obj(article)
 
-def expand_article_obj_from_crossref(article_obj : Paper) -> Paper:
+def crossref_expand_article_obj(article_obj : Paper) -> Paper:
     id_list = list(filter( lambda id_str: "doi.org" in id_str, [ str(uid.uri) for uid in article_obj.identifiers ]))
     logging.debug(f"Expanding for article with ids {id_list}")
     article_from_crossref = retrieve_articles_from_crossref(ids=id_list)
@@ -134,7 +134,8 @@ def expand_article_obj_from_crossref(article_obj : Paper) -> Paper:
             for funder in article_json["funder"]:
                 if "name" in funder:
                     funder_name = funder["name"]
-                    funder_obj = Organization(crossref_source_obj, funder_name)
+                    funder_obj = Organization(crossref_source_obj)
+                    funder_obj.set_label(funder_name)
                     if "DOI" in funder:
                         funder_doi = funder["DOI"]
                         if "http://" not in funder_doi:
@@ -186,7 +187,8 @@ def process_crossref_article_to_obj(article) -> Paper | None:
             for funder in article["funder"]:
                 if "name" in funder:
                     funder_name = funder["name"]
-                    funder_obj = Organization(crossref_source_obj, funder_name)
+                    funder_obj = Organization(crossref_source_obj)
+                    funder_obj.set_label(funder_name)
                     if "DOI" in funder:
                         funder_doi = funder["DOI"]
                         funder_id = UniqueIdentifier(crossref_source_obj, funder_doi)
@@ -232,7 +234,8 @@ def add_authors_to_article(author, article_obj: Paper):
     if "affiliation" in author:
         for affiliation in author["affiliation"]:
             affiliation_name_str = affiliation["name"]
-            affiliation_obj = Organization(crossref_source_obj, affiliation_name_str)
+            affiliation_obj = Organization(crossref_source_obj)
+            affiliation_obj.set_label(affiliation_name_str)
             author_obj.add_affiliation(affiliation_obj)
     article_obj.add_author(author_obj)
 

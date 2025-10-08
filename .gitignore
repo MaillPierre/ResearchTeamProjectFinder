@@ -27,3 +27,5 @@ src/researchteamprojectfinder.egg-info/
 data/crossref/
 
 data/sparql_cache/
+
+data/hal/paper/

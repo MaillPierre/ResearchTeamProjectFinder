@@ -65,7 +65,7 @@ class Thing(RDFResource):
         self.retrieved_from : Literal | None = None
         self.related : list[RDFResource] = []
         
-    def set_uri(self, uri : URIRef):
+    def set_uri(self, uri : URIRef | BNode):
         self.uri = uri
     
     def set_label(self, label: str):
@@ -210,9 +210,8 @@ class Agent(Thing):
             graph.add((self.uri, DCTERMS.coverage, location))
 
 class Organization (Agent):
-    def __init__(self, source: Source, label: str):
-            super().__init__(source, create_uri(label))
-            self.set_label(label)
+    def __init__(self, source: Source):
+            super().__init__(source, uri=BNode())
             self.alternatives: set[str] = set()
             self.identifiers: set[UniqueIdentifier] = set()
 
@@ -228,7 +227,7 @@ class Organization (Agent):
         return super().__eq__(value)
     
     def __hash__(self):
-        return super().__hash__() + hash(self.identifiers)
+        return super().__hash__() + hash(self.label)
     
     def to_rdf(self, graph: Graph):
         super().to_rdf(graph)
